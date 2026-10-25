@@ -39,12 +39,21 @@ dev = [
     "ipython>=8.12.3",
     "mypy>=2.4.0",
     "pandas-stubs>=3.0.5.260914",
+    "poethepoet>=0.33.0",
     "ruff>=0.17.2",
     "scipy-stubs>=1.17.1.5",
+    "typos>=1.51.1",
 ]
 test = [
     "pytest>=8.3.5",
 ]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
 
 
 [tool.ruff]
@@ -71,4 +80,22 @@ ignore = [
 "src/test_*" = ["D"]
 "docs/*" = ["D"]
 "*.ipynb" = ["D", "F401", "I001"]
+
+[tool.poe.tasks]
+check = { sequence = ["format-check", "lint", "typecheck", "test"], help = "Run all verification checks (format, lint, typing, test)" }
+fix = { sequence = ["format", "lint-fix"], help = "Auto-format and auto-fix lint issues" }
+
+format = { cmd = "ruff format src test", help = "Format code with ruff" }
+format-check = { cmd = "ruff format --check src test", help = "Check formatting without modifying files" }
+lint = { cmd = "ruff check src test", help = "Lint code with ruff" }
+lint-fix = { cmd = "ruff check --fix src test", help = "Lint code and apply safe auto-fixes" }
+typecheck = { cmd = "mypy src", help = "Type check source code with mypy" }
+test = { cmd = "pytest", help = "Run tests with pytest" }
+
+models = { sequence = ["model-en", "model-ru"], help = "Download spaCy language models" }
+model-en = { cmd = "python -m spacy download en_core_web_lg", help = "Download spaCy English model (en_core_web_lg)" }
+model-ru = { cmd = "python -m spacy download ru_core_news_lg", help = "Download spaCy Russian model (ru_core_news_lg)" }
+
+clean = { cmd = "python -c \"import shutil, glob; [shutil.rmtree(p, ignore_errors=True) for p in glob.glob('.*cache') + glob.glob('dist') + glob.glob('src/*.egg-info')]\"", help = "Remove cache and build artifacts" }
+
 

@@ -1,6 +1,12 @@
 """Gram2Vec: Document embedding based on grammatical and stylistic features."""
 
-__version__ = '2.0.0'
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version('gram2vec')
+except PackageNotFoundError:
+    __version__ = 'unknown'
+
 __author__ = 'Eric Sclafani'
 
 from .config import FeatureConfig

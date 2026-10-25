@@ -1,22 +1,24 @@
+"""Example script demonstrating Russian vocabulary loading with the explicit Gram2Vec API."""
+
 from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
-# Add project root to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add project src to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
 
 from gram2vec import Vocab
 
 
-def test_russian_vocab():
-    """Test that Russian vocabulary is loaded correctly via explicit Vocab instance."""
-    print('Testing Russian vocabulary loading:')
+def example_russian_vocab() -> None:
+    """Demonstrate Russian vocabulary loading via explicit Vocab instance."""
+    print('Russian vocabulary loading example:')
 
     # Explicitly instantiate Vocab for Russian without touching os.environ
     vocab = Vocab(language='ru')
 
-    # Test the dependency labels
+    # Example dependency labels
     dep_labels = vocab.get('dep_labels')
     print(f'\nDependency labels ({len(dep_labels)} items):')
     print(
@@ -25,7 +27,7 @@ def test_russian_vocab():
         else ', '.join(dep_labels)
     )
 
-    # Test the morph tags
+    # Example morphological tags
     morph_tags = vocab.get('morph_tags')
     print(f'\nMorphological tags ({len(morph_tags)} items):')
     print(
@@ -34,7 +36,7 @@ def test_russian_vocab():
         else ', '.join(morph_tags)
     )
 
-    # Test function words
+    # Example function words
     func_words = vocab.get('func_words')
     print(f'\nFunction words ({len(func_words)} items):')
     print(
@@ -43,11 +45,11 @@ def test_russian_vocab():
         else ', '.join(func_words)
     )
 
-    # Test sentences patterns (from matcher)
+    # Example sentence patterns (from matcher)
     sentences = vocab.get('sentences')
     print(f'\nSentence patterns ({len(sentences)} items):')
     print(', '.join(sentences))
 
 
 if __name__ == '__main__':
-    test_russian_vocab()
+    example_russian_vocab()

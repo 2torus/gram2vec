@@ -1,17 +1,21 @@
+"""Example script demonstrating Russian text vectorization with the explicit Gram2Vec API."""
+
 from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
-# Add project root to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add project src to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
 
-from gram2vec import Gram2Vec
+import spacy
+
+from gram2vec import FeatureConfig, Gram2Vec
 
 
-def test_russian_vectorization():
-    """Test that vectorization works correctly with Russian text using the explicit API."""
-    print('Testing Russian text vectorization:')
+def example_russian_vectorization() -> None:
+    """Demonstrate Russian text vectorization using the explicit API."""
+    print('Russian text vectorization example:')
 
     # Sample Russian text
     russian_text = [
@@ -21,9 +25,17 @@ def test_russian_vectorization():
 
     print(f'\nInput texts:\n1. {russian_text[0]}\n2. {russian_text[1]}')
 
-    # Explicitly instantiate Gram2Vec with Russian model (no os.environ needed!)
-    # Can also pass a local Path: Gram2Vec(model=Path("/path/to/local/model"))
-    g2v = Gram2Vec(model='ru_core_news_lg')
+    # Explicitly instantiate Gram2Vec with Russian model (or fallback if package not installed)
+    try:
+        g2v = Gram2Vec(model='ru_core_news_lg')
+    except OSError:
+        print(
+            "\nNote: 'ru_core_news_lg' not installed. "
+            "Falling back to blank 'ru' model with sentencizer for demonstration."
+        )
+        nlp = spacy.blank('ru')
+        nlp.add_pipe('sentencizer')
+        g2v = Gram2Vec(model=nlp, config=FeatureConfig.only('func_words', 'num_tokens'))
 
     print('\nVectorizing Russian text...')
     result = g2v.from_documents(russian_text)
@@ -40,4 +52,4 @@ def test_russian_vectorization():
 
 
 if __name__ == '__main__':
-    test_russian_vectorization()
+    example_russian_vectorization()

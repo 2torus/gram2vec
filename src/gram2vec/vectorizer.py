@@ -6,7 +6,7 @@ import warnings
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 import demoji
 import pandas as pd
@@ -290,7 +290,7 @@ class Gram2Vec:
             emb = pd.Series(doc.doc.vector).add_prefix('Embedding dim: ')
             feature_series.append(emb)
 
-        return pd.concat(feature_series, axis=0)
+        return cast(pd.Series, pd.concat(feature_series, axis=0))
 
     def _process_raw_documents(
         self, documents: Iterable[str]

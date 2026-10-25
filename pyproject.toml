@@ -38,6 +38,7 @@ dev = [
     "ipykernel>=6.29.5",
     "ipython>=8.12.3",
     "mypy>=2.4.0",
+    "nbclient>=0.11.0",
     "pandas-stubs>=3.0.5.260914",
     "poethepoet>=0.33.0",
     "ruff>=0.17.2",
@@ -46,7 +47,15 @@ dev = [
 ]
 test = [
     "pytest>=8.3.5",
+    "pytest-xdist>=3.8.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["test"]
+
+[tool.typos.default.extend-words]
+certifi = "certifi"
 
 [tool.mypy]
 python_version = "3.13"
@@ -77,7 +86,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "test/*" = ["D"]
 "tests/*" = ["D"]
-"src/test_*" = ["D"]
+"script/*" = ["D"]
 "docs/*" = ["D"]
 "*.ipynb" = ["D", "F401", "I001"]
 
@@ -85,10 +94,10 @@ ignore = [
 check = { sequence = ["format-check", "lint", "typecheck", "test"], help = "Run all verification checks (format, lint, typing, test)" }
 fix = { sequence = ["format", "lint-fix"], help = "Auto-format and auto-fix lint issues" }
 
-format = { cmd = "ruff format src test", help = "Format code with ruff" }
-format-check = { cmd = "ruff format --check src test", help = "Check formatting without modifying files" }
-lint = { cmd = "ruff check src test", help = "Lint code with ruff" }
-lint-fix = { cmd = "ruff check --fix src test", help = "Lint code and apply safe auto-fixes" }
+format = { cmd = "ruff format src test script", help = "Format code with ruff" }
+format-check = { cmd = "ruff format --check src test script", help = "Check formatting without modifying files" }
+lint = { cmd = "ruff check src test script", help = "Lint code with ruff" }
+lint-fix = { cmd = "ruff check --fix src test script", help = "Lint code and apply safe auto-fixes" }
 typecheck = { cmd = "mypy src", help = "Type check source code with mypy" }
 test = { cmd = "pytest", help = "Run tests with pytest" }
 
@@ -99,3 +108,16 @@ model-ru = { cmd = "python -m spacy download ru_core_news_lg", help = "Download 
 clean = { cmd = "python -c \"import shutil, glob; [shutil.rmtree(p, ignore_errors=True) for p in glob.glob('.*cache') + glob.glob('dist') + glob.glob('src/*.egg-info')]\"", help = "Remove cache and build artifacts" }
 
 
+[tool.poe.tasks.run-example]
+help = "Run all commands in script/"
+shell = "for f in $(find script -name '*.py'); do echo \" Running script \"$f; python \"$f\"; done"
+
+[tool.poe.tasks.run-notebooks]
+help = "Run notebooks"
+shell = """
+    cd docs/notebooks
+    for notebook in *.ipynb; do
+        echo "Executing $notebook"
+        jupyter-execute "$notebook"
+    done
+"""

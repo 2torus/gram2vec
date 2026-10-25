@@ -1,8 +1,15 @@
-"""
-Test script demonstrating the explicit Gram2Vec API
-"""
+"""Example script demonstrating the explicit Gram2Vec API."""
 
+from __future__ import annotations
+
+import sys
 from multiprocessing import freeze_support
+from pathlib import Path
+
+# Add project src to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
+
+import spacy
 
 from gram2vec import FeatureConfig, Gram2Vec
 
@@ -22,9 +29,18 @@ example_sentences = [
 ]
 
 
-def main():
+def main() -> None:
     # Explicitly initialize Gram2Vec (supports package name, Path to local folder, or spacy Language)
-    g2v = Gram2Vec(model='en_core_web_lg', config=config)
+    try:
+        g2v = Gram2Vec(model='en_core_web_lg', config=config)
+    except OSError:
+        print(
+            "Note: spaCy model 'en_core_web_lg' not installed. "
+            "Falling back to blank 'en' model for demonstration."
+        )
+        nlp = spacy.blank('en')
+        nlp.add_pipe('sentencizer')
+        g2v = Gram2Vec(model=nlp, config=config)
 
     # Extract features from example sentences
     print('Vectorizing example sentences...')
@@ -36,13 +52,13 @@ def main():
     example_text = 'The quick brown 😂 fox jumps over the lazy dog.'
     print(f'\nAnalyzing text: "{example_text}"')
 
-    # Find all nouns
+    # Find all nouns (requires POS model)
     noun_spans = g2v.find_feature_spans(example_text, 'pos_unigrams:NOUN')
     print('\nNouns found:')
     for span in noun_spans:
         print(f"  - '{span.text}' at positions {span.start_char}:{span.end_char}")
 
-    # Find all determiners
+    # Find all determiners (requires POS model)
     det_spans = g2v.find_feature_spans(example_text, 'pos_unigrams:DET')
     print('\nDeterminers found:')
     for span in det_spans:
@@ -66,19 +82,19 @@ def main():
     for span in punct_spans:
         print(f"  - '{span.text}' at positions {span.start_char}:{span.end_char}")
 
-    # Find noun->verb sequences
+    # Find noun->verb sequences (requires POS model)
     spans = g2v.find_feature_spans(example_text, 'pos_bigrams:NOUN VERB')
     print('\nNoun->verb sequences found:')
     for span in spans:
         print(f"  - '{span.text}' at positions {span.start_char}:{span.end_char}")
 
-    # Find sentences starting with adjectives
+    # Find sentences starting with adjectives (requires POS model)
     spans = g2v.find_feature_spans(example_text, 'pos_bigrams:BOS ADJ')
     print('\nSentences starting with adjectives found:')
     for span in spans:
         print(f"  - '{span.text}' at positions {span.start_char}:{span.end_char}")
 
-    # Find sentences ending with punctuation
+    # Find sentences ending with punctuation (requires POS model)
     spans = g2v.find_feature_spans(example_text, 'pos_bigrams:PUNCT EOS')
     print('\nSentences ending with punctuation found:')
     for span in spans:

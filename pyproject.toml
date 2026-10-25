@@ -37,7 +37,10 @@ source = "vcs"
 dev = [
     "ipykernel>=6.29.5",
     "ipython>=8.12.3",
+    "mypy>=2.4.0",
+    "pandas-stubs>=3.0.5.260914",
     "ruff>=0.17.2",
+    "scipy-stubs>=1.17.1.5",
 ]
 test = [
     "pytest>=8.3.5",
@@ -53,7 +56,19 @@ quote-style = "single"
 
 [tool.ruff.lint]
 select = ["A", "B", "C", "D", "E", "F", "G", "I", "N"]
+ignore = [
+    "E501",  # line length is handled by ruff format; string literals & regexes can remain long
+    "D105",  # missing docstring in magic method
+    "D107",  # missing docstring in __init__
+    "D203",  # one-blank-line-before-class (conflicts with D211)
+    "D213",  # multi-line-summary-second-line (conflicts with D212)
+    "D401",  # first line of docstring imperative mood
+]
 
 [tool.ruff.lint.per-file-ignores]
+"test/*" = ["D"]
 "tests/*" = ["D"]
+"src/test_*" = ["D"]
 "docs/*" = ["D"]
+"*.ipynb" = ["D", "F401", "I001"]
+

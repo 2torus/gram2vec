@@ -54,13 +54,13 @@ import spacy
 from gram2vec import Gram2Vec
 
 # Option A: By installed package name
-g2v = Gram2Vec(model="en_core_web_lg")
+g2v = Gram2Vec(model='en_core_web_lg')
 
 # Option B: From a local model directory on disk
-g2v = Gram2Vec(model=Path("./models/ru_core_news_lg"))
+g2v = Gram2Vec(model=Path('./models/ru_core_news_lg'))
 
 # Option C: From a pre-configured spaCy pipeline
-nlp = spacy.load("en_core_web_sm", exclude=["ner"])
+nlp = spacy.load('en_core_web_sm', exclude=['ner'])
 nlp.max_length = 5_000_000
 g2v = Gram2Vec(model=nlp)
 ```
@@ -74,9 +74,9 @@ There are two primary ways to vectorize:
 ##### From a list of strings (`.from_documents()`):
 ```python
 documents = [
-    "This is a test string 😄!!!",
-    "The string below me is false.",
-    "The string above me is true 😱!"
+    'This is a test string 😄!!!',
+    'The string below me is false.',
+    'The string above me is true 😱!',
 ]
 
 df = g2v.from_documents(documents)
@@ -92,9 +92,9 @@ df = g2v.from_documents(documents)
 Generates a dataframe from either a single `.jsonl` file or a directory of `.jsonl` files. Expects `fullText`, `authorIDs`, and `documentID`.
 
 ```python
-df = g2v.from_jsonlines("path/to/dataset/data.jsonl")
+df = g2v.from_jsonlines('path/to/dataset/data.jsonl')
 # Or a folder of .jsonl files:
-df = g2v.from_jsonlines("path/to/dataset/directory/")
+df = g2v.from_jsonlines('path/to/dataset/directory/')
 ```
 
 #### 3. Feature Configuration (`FeatureConfig`)
@@ -111,10 +111,10 @@ cfg = FeatureConfig.default()
 cfg = FeatureConfig.all()
 
 # Enable only specific features
-cfg = FeatureConfig.only("pos_unigrams", "pos_bigrams", "func_words")
+cfg = FeatureConfig.only('pos_unigrams', 'pos_bigrams', 'func_words')
 
 # Pass to Gram2Vec
-g2v = Gram2Vec(model="en_core_web_lg", config=cfg)
+g2v = Gram2Vec(model='en_core_web_lg', config=cfg)
 ```
 
 Optionally, you can include document word2vec embeddings for experimental comparison by passing `include_content_embedding=True`:
@@ -128,7 +128,7 @@ df = g2v.from_documents(documents, include_content_embedding=True)
 You can inspect exactly where specific grammatical features occur in text spans:
 
 ```python
-spans = g2v.find_feature_spans("The quick brown fox jumps.", "pos_unigrams:NOUN")
+spans = g2v.find_feature_spans('The quick brown fox jumps.', 'pos_unigrams:NOUN')
 for span in spans:
     print(f"{span.feature_name} '{span.text}' at [{span.start_char}:{span.end_char}]")
 ```
@@ -140,13 +140,13 @@ The `Verbalizer` calculates z-scores from a feature vector dataframe to produce 
 ```python
 from gram2vec import Gram2Vec
 
-g2v = Gram2Vec(model="en_core_web_lg")
-docs_df = g2v.from_jsonlines("path/to/dataset/directory/")
+g2v = Gram2Vec(model='en_core_web_lg')
+docs_df = g2v.from_jsonlines('path/to/dataset/directory/')
 
 verbalizer = g2v.create_verbalizer(docs_df, zscore_threshold=2.0)
 
 # Verbalize an author
-author_df = verbalizer.verbalize_author_id("author_112")
+author_df = verbalizer.verbalize_author_id('author_112')
 print(author_df.head(3))
 
 # Verbalize an unseen document vector

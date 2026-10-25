@@ -1,3 +1,5 @@
+"""Stylistic feature vectorization for text documents."""
+
 from __future__ import annotations
 
 import warnings
@@ -26,8 +28,8 @@ from .vocab import Vocab
 
 # Filter out specific open_text deprecation warning
 warnings.filterwarnings(
-    "ignore",
-    message=r"open_text is deprecated\. Use files\(\) instead\.",
+    'ignore',
+    message=r'open_text is deprecated\. Use files\(\) instead\.',
     category=DeprecationWarning,
 )
 
@@ -35,6 +37,7 @@ warnings.filterwarnings(
 @dataclass
 class Gram2VecDocument:
     """Encapsulates raw text and processed spaCy Doc object.
+
     Preserves raw text for emoji extraction and original statistics.
     """
 
@@ -46,32 +49,32 @@ class Gram2VecDocument:
 
 def _remove_emojis(document: str) -> str:
     """Removes emojis from a string and normalizes extra whitespace."""
-    new_string = demoji.replace(document, "").split()
-    return " ".join(new_string)
+    new_string = demoji.replace(document, '').split()
+    return ' '.join(new_string)
 
 
 def _load_jsonlines(path: Union[str, Path]) -> pd.DataFrame:
     """Loads one or more .jsonl files into a single dataframe."""
     p = Path(path)
-    if p.is_file() or str(path).endswith(".jsonl"):
+    if p.is_file() or str(path).endswith('.jsonl'):
         return pd.read_json(str(p), lines=True)
     if p.is_dir():
-        dfs = [pd.read_json(str(f), lines=True) for f in p.glob("*.jsonl")]
+        dfs = [pd.read_json(str(f), lines=True) for f in p.glob('*.jsonl')]
         if not dfs:
-            raise FileNotFoundError(f"No .jsonl files found in directory: {p}")
+            raise FileNotFoundError(f'No .jsonl files found in directory: {p}')
         return pd.concat(dfs).reset_index(drop=True)
-    raise FileNotFoundError(f"Path does not exist: {path}")
+    raise FileNotFoundError(f'Path does not exist: {path}')
 
 
 def _get_json_entries(df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
     """Retrieves fullText, authorIDs, and documentID fields from a jsonlines dataframe."""
     try:
-        documents = df["fullText"]
-        author_ids = df["authorIDs"]
-        document_ids = df["documentID"]
+        documents = df['fullText']
+        author_ids = df['authorIDs']
+        document_ids = df['documentID']
     except KeyError as err:
         raise KeyError(
-            "Specified jsonlines dataframe missing required fields: "
+            'Specified jsonlines dataframe missing required fields: '
             "'fullText', 'authorIDs', and 'documentID'"
         ) from err
     return documents, author_ids, document_ids
@@ -79,12 +82,13 @@ def _get_json_entries(df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series
 
 class Gram2Vec:
     """Primary interface for stylistic feature vectorization.
+
     Fully self-contained, stateless, and supports explicit spaCy model loading.
     """
 
     def __init__(
         self,
-        model: Union[str, Path, Language] = "en_core_web_lg",
+        model: Union[str, Path, Language] = 'en_core_web_lg',
         *,
         language: Optional[str] = None,
         config: Optional[Union[FeatureConfig, Dict[str, Any]]] = None,
@@ -121,16 +125,26 @@ class Gram2Vec:
         )
 
         # Infer language from spaCy model if not explicitly specified
-        self.language = language if language is not None else getattr(self.nlp, "lang", "en")
+        self.language = (
+            language if language is not None else getattr(self.nlp, 'lang', 'en')
+        )
 
         # Initialize matcher for sentence syntax constructions
-        self.matcher = matcher if matcher is not None else SyntaxRegexMatcher(language=self.language)
+        self.matcher = (
+            matcher
+            if matcher is not None
+            else SyntaxRegexMatcher(language=self.language)
+        )
 
         # Initialize vocabulary
-        self.vocab = vocab if vocab is not None else Vocab(
-            language=self.language,
-            vocab_dir=vocab_dir,
-            matcher=self.matcher,
+        self.vocab = (
+            vocab
+            if vocab is not None
+            else Vocab(
+                language=self.language,
+                vocab_dir=vocab_dir,
+                matcher=self.matcher,
+            )
         )
 
         # Initialize configuration
@@ -161,7 +175,9 @@ class Gram2Vec:
         self, docs_df: pd.DataFrame, zscore_threshold: float = 2.0
     ) -> Verbalizer:
         """Creates a Verbalizer instance calibrated to this model's language."""
-        return Verbalizer(docs_df, zscore_threshold=zscore_threshold, language=self.language)
+        return Verbalizer(
+            docs_df, zscore_threshold=zscore_threshold, language=self.language
+        )
 
     # ~~~ Feature Extractors ~~~
 
@@ -172,15 +188,15 @@ class Gram2Vec:
         return Counter(extract_pos_bigrams(doc.doc))
 
     def _extract_func_words(self, doc: Gram2VecDocument) -> Counter:
-        func_words_vocab = set(self.vocab.get("func_words"))
+        func_words_vocab = set(self.vocab.get('func_words'))
         return Counter([t.text for t in doc.doc if t.text in func_words_vocab])
 
     def _extract_punctuation(self, doc: Gram2VecDocument) -> Counter:
-        punc_vocab = set(self.vocab.get("punctuation"))
+        punc_vocab = set(self.vocab.get('punctuation'))
         return Counter([c for t in doc.doc for c in t.text if c in punc_vocab])
 
     def _extract_letters(self, doc: Gram2VecDocument) -> Counter:
-        letters_vocab = set(self.vocab.get("letters"))
+        letters_vocab = set(self.vocab.get('letters'))
         return Counter([c for t in doc.doc for c in t.text if c in letters_vocab])
 
     def _extract_dep_labels(self, doc: Gram2VecDocument) -> Counter:
@@ -194,31 +210,31 @@ class Gram2Vec:
         return Counter([m.pattern_name for m in matches])
 
     def _extract_emojis(self, doc: Gram2VecDocument) -> Counter:
-        emojis_vocab = set(self.vocab.get("emojis"))
+        emojis_vocab = set(self.vocab.get('emojis'))
         extracted_emojis = demoji.findall_list(doc.raw, desc=False)
         counted: Counter = Counter()
         for e in extracted_emojis:
             if e in emojis_vocab:
                 counted[e] += 1
             else:
-                counted["OOV_emoji"] += 1
+                counted['OOV_emoji'] += 1
         return counted
 
     def _extract_num_tokens(self, doc: Gram2VecDocument) -> Counter:
-        return Counter({"num_tokens": doc.num_tokens})
+        return Counter({'num_tokens': doc.num_tokens})
 
     def _get_extractor_map(self) -> Dict[str, Callable[[Gram2VecDocument], Counter]]:
         return {
-            "pos_unigrams": self._extract_pos_unigrams,
-            "pos_bigrams": self._extract_pos_bigrams,
-            "func_words": self._extract_func_words,
-            "punctuation": self._extract_punctuation,
-            "letters": self._extract_letters,
-            "emojis": self._extract_emojis,
-            "dep_labels": self._extract_dep_labels,
-            "morph_tags": self._extract_morph_tags,
-            "sentences": self._extract_sentences,
-            "num_tokens": self._extract_num_tokens,
+            'pos_unigrams': self._extract_pos_unigrams,
+            'pos_bigrams': self._extract_pos_bigrams,
+            'func_words': self._extract_func_words,
+            'punctuation': self._extract_punctuation,
+            'letters': self._extract_letters,
+            'emojis': self._extract_emojis,
+            'dep_labels': self._extract_dep_labels,
+            'morph_tags': self._extract_morph_tags,
+            'sentences': self._extract_sentences,
+            'num_tokens': self._extract_num_tokens,
         }
 
     # ~~~ Normalization and Vector Construction ~~~
@@ -234,10 +250,10 @@ class Gram2Vec:
         self, feat_name: str, counts: pd.Series, num_tokens: int
     ) -> pd.Series:
         """Normalizes counted feature series according to feature type."""
-        if feat_name == "num_tokens":
+        if feat_name == 'num_tokens':
             return counts
 
-        if feat_name in ("emojis", "punctuation", "func_words", "sentences"):
+        if feat_name in ('emojis', 'punctuation', 'func_words', 'sentences'):
             norm_factor = num_tokens if num_tokens > 0 else 1
             return counts / norm_factor
 
@@ -258,7 +274,7 @@ class Gram2Vec:
 
             raw_counts = extractor_map[feat_name](doc)
 
-            if feat_name == "num_tokens":
+            if feat_name == 'num_tokens':
                 counts_series = pd.Series(raw_counts)
             else:
                 vocab_items = self.vocab.get(feat_name)
@@ -267,16 +283,18 @@ class Gram2Vec:
             normalized = self._normalize_feature_counts(
                 feat_name, counts_series, doc.num_tokens
             )
-            prefixed = normalized.add_prefix(f"{feat_name}:")
+            prefixed = normalized.add_prefix(f'{feat_name}:')
             feature_series.append(prefixed)
 
         if include_content_embedding:
-            emb = pd.Series(doc.doc.vector).add_prefix("Embedding dim: ")
+            emb = pd.Series(doc.doc.vector).add_prefix('Embedding dim: ')
             feature_series.append(emb)
 
         return pd.concat(feature_series, axis=0)
 
-    def _process_raw_documents(self, documents: Iterable[str]) -> List[Gram2VecDocument]:
+    def _process_raw_documents(
+        self, documents: Iterable[str]
+    ) -> List[Gram2VecDocument]:
         """Converts raw string documents into Gram2VecDocument instances."""
         doc_list = list(documents)
         cleaned_docs = [_remove_emojis(doc) for doc in doc_list]
@@ -294,7 +312,9 @@ class Gram2Vec:
 
         return [
             Gram2VecDocument(raw, d, t_cnt, s_cnt)
-            for raw, d, t_cnt, s_cnt in zip(doc_list, nlp_docs, token_counts, sentence_counts, strict=False)
+            for raw, d, t_cnt, s_cnt in zip(
+                doc_list, nlp_docs, token_counts, sentence_counts, strict=False
+            )
         ]
 
     # ~~~ Public Vectorization API ~~~
@@ -329,6 +349,7 @@ class Gram2Vec:
         include_content_embedding: bool = False,
     ) -> pd.DataFrame:
         """Creates a stylistic feature vector matrix from a .jsonl file or directory of .jsonl files.
+
         Requires 'fullText', 'authorIDs', and 'documentID' fields.
 
         Args:
@@ -351,7 +372,7 @@ class Gram2Vec:
             return pd.DataFrame()
 
         vector_df = pd.concat(feature_vectors, axis=1).T
-        vector_df.insert(0, "authorIDs", author_ids.values)
+        vector_df.insert(0, 'authorIDs', author_ids.values)
         vector_df.set_index(document_ids.values, inplace=True)
         return vector_df
 

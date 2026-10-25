@@ -1,3 +1,5 @@
+"""Feature configuration options for Gram2Vec."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, fields
@@ -6,8 +8,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class FeatureConfig:
-    """Configuration for enabling/disabling specific grammatical features in Gram2Vec.
-    """
+    """Configuration for enabling/disabling specific grammatical features in Gram2Vec."""
 
     pos_unigrams: bool = True
     pos_bigrams: bool = True
@@ -39,7 +40,9 @@ class FeatureConfig:
             if feat in init_kwargs:
                 init_kwargs[feat] = True
             else:
-                raise ValueError(f"Unknown feature '{feat}'. Valid features are: {sorted(valid_fields)}")
+                raise ValueError(
+                    f"Unknown feature '{feat}'. Valid features are: {sorted(valid_fields)}"
+                )
         return cls(**init_kwargs)
 
     @classmethod

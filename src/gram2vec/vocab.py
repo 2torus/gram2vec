@@ -1,3 +1,5 @@
+"""Vocabulary loading and management for grammatical feature sets."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,24 +12,23 @@ except ImportError:
 
 
 STANDARD_VOCAB_NAMES = (
-    "pos_unigrams",
-    "pos_bigrams",
-    "dep_labels",
-    "emojis",
-    "func_words",
-    "morph_tags",
-    "punctuation",
-    "letters",
+    'pos_unigrams',
+    'pos_bigrams',
+    'dep_labels',
+    'emojis',
+    'func_words',
+    'morph_tags',
+    'punctuation',
+    'letters',
 )
 
 
 class Vocab:
-    """Encapsulates feature vocabularies without relying on global state or environment variables.
-    """
+    """Encapsulates feature vocabularies without relying on global state or environment variables."""
 
     def __init__(
         self,
-        language: str = "en",
+        language: str = 'en',
         vocab_dir: Optional[Union[str, Path]] = None,
         load_defaults: bool = True,
         matcher: Optional[Any] = None,
@@ -44,26 +45,30 @@ class Vocab:
         if vocab_dir is not None:
             path = Path(vocab_dir)
             if not path.is_dir():
-                raise NotADirectoryError(f"Provided vocab directory does not exist: {path}")
+                raise NotADirectoryError(
+                    f'Provided vocab directory does not exist: {path}'
+                )
             return path
 
         # Default to built-in vocab package directory
         try:
-            return Path(str(pkg_resources.files("gram2vec").joinpath("vocab")))
+            return Path(str(pkg_resources.files('gram2vec').joinpath('vocab')))
         except Exception:
             # Fallback for development / non-packaged environments
-            return Path(__file__).resolve().parent / "vocab"
+            return Path(__file__).resolve().parent / 'vocab'
 
     def _load_from_txt(self, path: Union[str, Path]) -> List[str]:
         """Loads a .txt file delimited by newlines."""
-        with open(path, "r", encoding="utf-8") as fin:
-            return [line.rstrip("\r\n") for line in fin]
+        with open(path, 'r', encoding='utf-8') as fin:
+            return [line.rstrip('\r\n') for line in fin]
 
     def get(self, vocab_name: str) -> List[str]:
         """Fetches the desired vocabulary items."""
         if vocab_name in self._vocabs:
             return self._vocabs[vocab_name]
-        raise KeyError(f"Requested vocab '{vocab_name}' not found in registered vocabularies: {list(self._vocabs.keys())}")
+        raise KeyError(
+            f"Requested vocab '{vocab_name}' not found in registered vocabularies: {list(self._vocabs.keys())}"
+        )
 
     def has(self, vocab_name: str) -> bool:
         """Checks if a vocabulary name is registered."""
@@ -76,6 +81,7 @@ class Vocab:
         file_path: Optional[Union[str, Path]] = None,
     ) -> None:
         """Adds vocabulary from a newline delimited .txt file.
+
         If file_path is explicitly given, loads that file directly.
         Otherwise, attempts to find '<language>_<vocab_name>.txt' or falls back to '<vocab_name>.txt'
         inside the configured vocab directory.
@@ -90,14 +96,14 @@ class Vocab:
         target_lang = language if language is not None else self.language
 
         # Try language-specific file first if not default 'en'
-        if target_lang and target_lang != "en":
-            lang_path = self.vocab_dir / f"{target_lang}_{vocab_name}.txt"
+        if target_lang and target_lang != 'en':
+            lang_path = self.vocab_dir / f'{target_lang}_{vocab_name}.txt'
             if lang_path.is_file():
                 self._vocabs[vocab_name] = self._load_from_txt(lang_path)
                 return
 
         # Fallback to default file
-        default_path = self.vocab_dir / f"{vocab_name}.txt"
+        default_path = self.vocab_dir / f'{vocab_name}.txt'
         if not default_path.is_file():
             raise FileNotFoundError(
                 f"Vocab file '{default_path}' does not exist for vocab '{vocab_name}'"
@@ -115,14 +121,15 @@ class Vocab:
             self.add_from_path(name, language=self.language)
 
         # Register sentence patterns if matcher is provided
-        if matcher is not None and hasattr(matcher, "patterns"):
-            self.add_items("sentences", tuple(matcher.patterns.keys()))
+        if matcher is not None and hasattr(matcher, 'patterns'):
+            self.add_items('sentences', tuple(matcher.patterns.keys()))
         else:
             # Lazy import to avoid circular dependency
             from .matcher import SyntaxRegexMatcher
+
             try:
                 temp_matcher = SyntaxRegexMatcher(language=self.language)
-                self.add_items("sentences", tuple(temp_matcher.patterns.keys()))
+                self.add_items('sentences', tuple(temp_matcher.patterns.keys()))
             except Exception:
                 # If language is unknown and no patterns provided, default to empty
-                self.add_items("sentences", ())
+                self.add_items('sentences', ())

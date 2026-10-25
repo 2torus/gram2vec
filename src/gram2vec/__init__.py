@@ -1,5 +1,7 @@
-__version__ = "2.0.0"
-__author__ = "Eric Sclafani"
+"""Gram2Vec: Document embedding based on grammatical and stylistic features."""
+
+__version__ = '2.0.0'
+__author__ = 'Eric Sclafani'
 
 from .config import FeatureConfig
 from .feature_locator import FeatureLocator, FeatureSpan
@@ -9,14 +11,16 @@ from .verbalizer import Verbalizer
 from .vocab import Vocab
 
 __all__ = [
-    "Gram2Vec",
-    "Vectorizer",
-    "FeatureConfig",
-    "FeatureLocator",
-    "FeatureSpan",
-    "Gram2VecDocument",
-    "Match",
-    "SyntaxRegexMatcher",
-    "Verbalizer",
-    "Vocab",
+    '__version__',
+    '__author__',
+    'Gram2Vec',
+    'Vectorizer',
+    'FeatureConfig',
+    'FeatureLocator',
+    'FeatureSpan',
+    'Gram2VecDocument',
+    'Match',
+    'SyntaxRegexMatcher',
+    'Verbalizer',
+    'Vocab',
 ]

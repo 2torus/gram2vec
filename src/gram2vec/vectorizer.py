@@ -257,9 +257,9 @@ class Gram2Vec:
             norm_factor = num_tokens if num_tokens > 0 else 1
             return counts / norm_factor
 
-        total = counts.sum()
-        norm_factor = total if total > 0 else 1
-        return counts / norm_factor
+        total = float(counts.sum())
+        total_norm = total if total > 0 else 1.0
+        return counts / total_norm
 
     def _apply_features_to_doc(
         self, doc: Gram2VecDocument, include_content_embedding: bool
@@ -372,8 +372,8 @@ class Gram2Vec:
             return pd.DataFrame()
 
         vector_df = pd.concat(feature_vectors, axis=1).T
-        vector_df.insert(0, 'authorIDs', author_ids.values)
-        vector_df.set_index(document_ids.values, inplace=True)
+        vector_df.insert(0, 'authorIDs', author_ids.to_numpy())
+        vector_df.set_index(document_ids.to_numpy(), inplace=True)
         return vector_df
 
     def from_spacy_docs(

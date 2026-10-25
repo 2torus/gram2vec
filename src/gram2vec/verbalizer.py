@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -84,9 +84,12 @@ class Verbalizer:
 
         return pd.DataFrame(author_ids_to_avs).T
 
-    def _get_threshold_zscores_idxs(self, zscores: np.ndarray) -> List[int]:
+    def _get_threshold_zscores_idxs(
+        self, zscores: Union[np.ndarray, pd.Series, Any]
+    ) -> np.ndarray:
         """Gets column indices for zscores exceeding threshold."""
-        return [i for i, val in enumerate(zscores) if abs(val) >= self.threshold]
+        arr = np.asarray(zscores)
+        return np.where(np.abs(arr) >= self.threshold)[0]
 
     def _get_record_from_id(self, df: pd.DataFrame, id_val: str) -> int:
         """Retrieves index of record in dataframe by index label."""
@@ -99,7 +102,7 @@ class Verbalizer:
         numeric_df = self._exclude_columns(df, cols=['authorIDs']).select_dtypes(
             include=np.number
         )
-        scores = zscore(numeric_df.values, axis=0, nan_policy='omit')
+        scores = zscore(numeric_df.to_numpy(), axis=0, nan_policy='omit')
         return pd.DataFrame(scores, index=numeric_df.index, columns=numeric_df.columns)
 
     def _get_identifying_features(self, author_id: str, df: pd.DataFrame) -> pd.Series:
@@ -107,7 +110,7 @@ class Verbalizer:
         all_zscores = self._get_zscores(df)
         idx = self._get_record_from_id(df, author_id)
         extracted_zscores = all_zscores.iloc[idx]
-        chosen_indices = self._get_threshold_zscores_idxs(extracted_zscores.values)
+        chosen_indices = self._get_threshold_zscores_idxs(extracted_zscores.to_numpy())
         return extracted_zscores.iloc[chosen_indices]
 
     def _template(self, doc_or_author: str, feat_name: str, direction: str) -> str:
@@ -145,23 +148,23 @@ class Verbalizer:
         feature_names = numeric_df.columns.to_list()
 
         vec = (
-            document_vector.values
+            document_vector.to_numpy()
             if isinstance(document_vector, pd.Series)
             else np.asarray(document_vector)
         )
 
-        fit_matrix = np.vstack([numeric_df.values, vec])
+        fit_matrix = np.vstack([numeric_df.to_numpy(), vec])
         scores = zscore(fit_matrix, axis=0, nan_policy='omit')
         unseen_doc_zscores = pd.Series(scores[-1], index=feature_names)
 
-        chosen_indices = self._get_threshold_zscores_idxs(unseen_doc_zscores.values)
+        chosen_indices = self._get_threshold_zscores_idxs(unseen_doc_zscores.to_numpy())
         selected_zscores = unseen_doc_zscores.iloc[chosen_indices]
         templated_strings = self._verbalize_zscores(selected_zscores, 'document')
 
         return pd.DataFrame(
             {
-                'feature_name': [feature_names[i] for i in chosen_indices],
-                'zscore': selected_zscores.values,
+                'feature_name': [feature_names[int(i)] for i in chosen_indices],
+                'zscore': selected_zscores.to_numpy(),
                 'verbalized': templated_strings,
             }
         )

@@ -1,32 +1,59 @@
-[build-system]
-requires = [
-    "setuptools >= 65", 
-    "wheel >= 0.38",
-    "setuptools-scm"
-    ]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "gram2vec"
-version = "1.0.0"
+dynamic = ["version"]
 description="Gram2vec is a document embedding software that maps strings to high-dimensional vectors based off stylistic features."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11, <3.15"
 license = {file = "LICENSE"}
 #urls = {source = "https://github.com/iarpa-hiatus/eric-gram2vec"} #! will need to be updated
 dependencies = [
-    "numpy",
-    "pandas", 
-    "spacy",
-    "demoji",
+    "demoji>=1.1.0",
+    "numpy>=1.24.4",
+    "pandas>=2.0.3",
+    "scipy>=1.10.1",
+    "spacy>=3.7.5",
 ]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",        
-    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     ]
 
-[tool.setuptools.package-data]
-"*" = [ "*.txt"]
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+[tool.hatch.build]
+include = ["*.txt"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "ipython>=8.12.3",
+    "ruff>=0.17.2",
+]
+test = [
+    "pytest>=8.3.5",
+]
+
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = ["A", "B", "C", "D", "E", "F", "G", "I", "N"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
+"docs/*" = ["D"]

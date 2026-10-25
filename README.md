@@ -40,115 +40,119 @@ pip install -e gram2vec/
 
 ## Usage
 
-### Vectorizer
+### Vectorizer (`Gram2Vec`)
 
-There are two options for calling the vectorizer.
+To get started, import `Gram2Vec` from `gram2vec` and initialize an instance. The API is completely stateless and explicit—there are no global variables or hidden environment variables.
 
-The first option, `vectorizer.from_jsonlines()`, is used to generate a dataframe from **either a single .jsonl file** _OR_ **a directory of .jsonl files**.
+#### 1. Explicit Model Loading
+
+You can load your spaCy model in three ways:
 
 ```python
->>> from gram2vec import vectorizer
->>> my_df = vectorizer.from_jsonlines("path/to/dataset/data.jsonl")
->>> my_df = vectorizer.from_jsonlines("path/to/dataset/directory/")
+from pathlib import Path
+import spacy
+from gram2vec import Gram2Vec
+
+# Option A: By installed package name
+g2v = Gram2Vec(model="en_core_web_lg")
+
+# Option B: From a local model directory on disk
+g2v = Gram2Vec(model=Path("./models/ru_core_news_lg"))
+
+# Option C: From a pre-configured spaCy pipeline
+nlp = spacy.load("en_core_web_sm", exclude=["ner"])
+nlp.max_length = 5_000_000
+g2v = Gram2Vec(model=nlp)
 ```
 
-`vectorizer.from_jsonlines()` expects a jsonlines file with the following fields: 
+The language (`"en"`, `"ru"`, etc.) is automatically inferred from `model.lang`, or you can specify it explicitly via `language="ru"`. Multiple `Gram2Vec` instances for different languages can run in the same Python process without interference.
 
-- **fullText** - raw document text
-- **authorIDs** - author identifier (no authors can have the same ID)
-- **documentID** - document identifier(no documents can have the same ID)
+#### 2. Vectorizing Documents
 
-The second option,`vectorizer.from_documents()`, is used to generate a dataframe **from a list of strings**. Note that this does NOT take into account author or document IDs, unlike the `.from_jsonlines()` function.
+There are two primary ways to vectorize:
 
+##### From a list of strings (`.from_documents()`):
 ```python
->>> from gram2vec import vectorizer
->>> documents = [
+documents = [
     "This is a test string 😄!!!",
     "The string below me is false.",
     "The string above me is true 😱!"
 ]
->>> vectorizer.from_documents(documents)
+
+df = g2v.from_documents(documents)
 ```
+
 |   pos_unigrams:ADJ   |   pos_unigrams:ADP   |   pos_unigrams:ADV   | ... |   sentences:obj-relcl   |   sentences:tag-question   |   sentences:coordinate-clause   |
 |----------------------|----------------------|----------------------|-----|------------------------|---------------------------|-------------------------------|
 |           0.000000   |           0.000000   |           0.0        | ... |           0.0          |           0.0             |           0.0                 |
 |           0.142857   |           0.142857   |           0.0        | ... |           0.0          |           0.0             |           0.0                 |
 |           0.142857   |           0.142857   |           0.0        | ... |           0.0          |           0.0             |           0.0                 |
 
-You can also enable or disable select feature extractors by using the `config` parameter, which takes a dictionary of feature names mapped to 1 or 0 (1 = ON, 0 = OFF). 
-
-By default, `all features are activated`. Here's an example of what a configuration looks like:
+##### From JSONLines (`.from_jsonlines()`):
+Generates a dataframe from either a single `.jsonl` file or a directory of `.jsonl` files. Expects `fullText`, `authorIDs`, and `documentID`.
 
 ```python
->>> config = {
-    "pos_unigrams":1,
-    "pos_bigrams":0,
-    "func_words":1,
-    "punctuation":1,
-    "letters":0,
-    "emojis":1,
-    "dep_labels":1,
-    "morph_tags":1,
-    "sentences":1
-    }
->>> my_df = vectorizer.from_jsonlines("path/to/dataset/directory/", config=config)
+df = g2v.from_jsonlines("path/to/dataset/data.jsonl")
+# Or a folder of .jsonl files:
+df = g2v.from_jsonlines("path/to/dataset/directory/")
 ```
 
-Additionally, there is an option to include the document embedding produced by **word2vec**. This option should `ONLY` be used for experimenting, `NOT` official authorship attribution evaluations. 
+#### 3. Feature Configuration (`FeatureConfig`)
 
-The purpose of this is to test how well the grammatical stylistic features perform during authorship attribution with and without the embedding. The point of stylistic feature extraction is to create vectors `completely independent of content`, only capturing the style from documents. Since we know that **word2vec** embeddings do include content, they are useful to compare `gram2vec` vectors to.
+You can configure which feature extractors are active using the typed `FeatureConfig` dataclass or a dictionary:
 
 ```python
->>> my_df = vectorizer.from_jsonlines("path/to/dataset/directory/", include_content_embedding=True)
+from gram2vec import FeatureConfig, Gram2Vec
+
+# Default features (letters=False, all others True)
+cfg = FeatureConfig.default()
+
+# Enable all features (including letters)
+cfg = FeatureConfig.all()
+
+# Enable only specific features
+cfg = FeatureConfig.only("pos_unigrams", "pos_bigrams", "func_words")
+
+# Pass to Gram2Vec
+g2v = Gram2Vec(model="en_core_web_lg", config=cfg)
+```
+
+Optionally, you can include document word2vec embeddings for experimental comparison by passing `include_content_embedding=True`:
+
+```python
+df = g2v.from_documents(documents, include_content_embedding=True)
+```
+
+### Feature Locator
+
+You can inspect exactly where specific grammatical features occur in text spans:
+
+```python
+spans = g2v.find_feature_spans("The quick brown fox jumps.", "pos_unigrams:NOUN")
+for span in spans:
+    print(f"{span.feature_name} '{span.text}' at [{span.start_char}:{span.end_char}]")
 ```
 
 ### Verbalizer
 
-The goal of the verbalizer is to calculate zscores from a given grammatical feature vector dataframe and produce string representations for the most "salient" features. Given a dataset, `Verbalizer` will calculate and store the zscores for each row. This works on the document and author levels.
+The `Verbalizer` calculates z-scores from a feature vector dataframe to produce human-readable explanations of the most distinguishing stylistic traits:
 
-The theory behind this is that when calculating the zscores for each feature, that will tell us `how many standard deviations away that feature is from the average feature`. We can then answer questions like: "which features does author A use frequently that sets them apart from authors B, C, and D?". This also works on the document level too. Given an **unseen document vector**, we can also answer: "how much does it's features deviate from the other document vectors?"
-
-Additionally, a **threshold** value is used to select the zscores that deviate from the mean that many times. By default, this value is `2.0`
-
-To get started, import both vectorizer and verbalizer from gram2vec. `Verbalizer` needs a dataframe with **authorIDS** and **documentID** fields included. You can use `vectorizer.from_jsonlines()` which will include them automatically, or use `vectorizer.from_documents()` and manually add those required columns to the dataframe.
 ```python
->>> from gram2vec import vectorizer, verbalizer
+from gram2vec import Gram2Vec
 
->>> my_df = vectorizer.from_jsonlines("path/to/dataset/directory/") 
->>> verbalized = verbalizer.Verbalizer(my_df)
+g2v = Gram2Vec(model="en_core_web_lg")
+docs_df = g2v.from_jsonlines("path/to/dataset/directory/")
+
+verbalizer = g2v.create_verbalizer(docs_df, zscore_threshold=2.0)
+
+# Verbalize an author
+author_df = verbalizer.verbalize_author_id("author_112")
+print(author_df.head(3))
+
+# Verbalize an unseen document vector
+doc_df = verbalizer.verbalize_document_vector(unseen_vector)
+print(doc_df.head(3))
 ```
-You can also change the zscore threshold if desired:
-```python
->>> verbalized = verbalizer.Verbalizer(my_df, zscore_threshold=2.5)
-```
-
-Zscores and verbalizations can be done on the `author` and `document` levels. For the author level, the `.verbalize_author()` method is used. It accepts a unique author id and returns a dataframe with the feature names, zscores, and verbalizations as columns:
-```python
-
->>> verbalized.verbalize_author_id("en_112")
->>> verbalized.head(3)
-```
-| index |      feature_name     |  zscore  |                                     verbalized                                          |
-|-------|-----------------------|----------|-------------------------------------------------|
-|   0   | pos_unigrams:ADV      | 2.437037 | This author uses the part of speech unigram 'ADV' more than the average author                                 
-|   1   | pos_bigrams:ADV ADP   | 2.759779 | This author uses the part of speech bigram 'ADV ADP' more than the average author                             
-|   2   | pos_bigrams:ADP SYM   | 2.192766 | This author uses the part of speech bigram 'ADP SYM' more than the average author                              
-                      
-
-To verbalize **unseen documents**, use the `.verbalize_document_vector()` method. This function takes an unseen *document vector* as input and calculates the zscores and verbalized string for it with respect to the data the `Verbalizer` data is initially fit with:
-```python
->>> my_df = vectorizer.from_jsonlines("path/to/dataset/directory/") # this is essentially the "training data"
->>> verbalized = verbalizer.Verbalizer(my_df)
->>> verbalized.verbalize_document_vector(my_unseed_doc_vector_here) # unseen document vector
-```
-
-| index |         feature_name        |  zscore   |                                    verbalized                                   |
-|-------|----------------------------|-----------|---------------------------------------------------------------------------------|
-|  30   |          emojis:🥰            | 5.518523  | This document uses the emoji '🥰' more than the average document            |
-|  31   |       dep_labels:cc          | 2.400670  | This document uses the dependency parse label 'cc' more than the average document       |
-|  32   |     dep_labels:meta        | -4.329617  | This document uses the dependency parse label 'meta' less than the average document    |
-|  33   | morph_tags:ConjType=Cmp | -2.118285  | This document uses the morphological tag 'ConjType=Cmp' less than the average document |
-|  34   | sentences:coordinate-clause | 2.517907  | This document uses the sentence type 'coordinate-clause' more than the average document |
 
 ## Vocab
 
@@ -179,27 +183,23 @@ Define what you want to count and why. What is the intuition behind it and what 
 
 Define a vocabulary. This will be some collection of countable objects. In the [vocab](src/gram2vec/vocab) directory, the vocabularies are just text files of countable items. If using an external file for vocabulary, give it the same name as the feature you're counting. Alternatively, you may want to add a regex matching feature similar to how my other package, [Syntax Regex Matcher](https://github.com/eric-sclafani/syntax-regex-matcher), works. 
 
-After defining your vocab, register it inside of the `Vocab` class in [_load_vocab.py](src/gram2vec/_load_vocab.py). There are two methods for doing so based on how you implement the features. Use what's already there as a guide.
-
-### Step 2.5
-
-If possible, create a custom spaCy extension for your countable items. It makes the code cleaner (imo) and works well. See the [load_spacy.py](src/gram2vec/load_spacy.py) functions as examples. This functionality is not a requirement, as not all of the features make use of spaCy extensions.
+After defining your vocab, register it inside of the `Vocab` class in [vocab.py](src/gram2vec/vocab.py). There are two methods for doing so based on how you implement the features. Use what's already there as a guide.
 
 ### Step 3
 
-Inside of [vectorizer.py](src/gram2vec/vectorizer.py), define a function that returns a **Counter** object of your countable feature (again, see the other feature functions as example). Make sure to use the `@Feature.register` decorator to register it as a feature.
-
-Each feature function returns a Counter object by itself. However, upon calling each function, they become instances of the `Feature` class, where things like normalization and zero vocab counts are calculated. They are also added to the global `REGISTERED_FEATURES` dictionary which is used by the `from_jsonlines` and `from_documents()` functions to create vectors.
+Inside of [vectorizer.py](src/gram2vec/vectorizer.py), define an extractor method on `Gram2Vec` that returns a **Counter** of your countable feature and add it to `_get_extractor_map()`.
 
 ### Step 4
 
-Add your feature to the `default_config` dictionary and give it a value of **1**
+Add your feature as a field to `FeatureConfig` in [config.py](src/gram2vec/config.py).
 
 ### Step 5
 
-Finally, if you want to also use the `Verbalizer` with your new features, you should add it to the `Verbalizer._template()` method's `name_mapping` dictionary. The purpose of this is to give it a cleaner string representation. 
+Finally, if you want to also use the `Verbalizer` with your new features, you should add it to `NAME_MAPPING_EN` (and `NAME_MAPPING_RU`) in [verbalizer.py](src/gram2vec/verbalizer.py) to provide a descriptive string representation. 
 
 
-## Acknowledgements
+## Acknowledgements & Credits
 
 This research is supported in part by the Office of the Director of National Intelligence (ODNI), Intelligence Advanced Research Projects Activity (IARPA), via the HIATUS Program contract #2022-22072200005. The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies, either expressed or implied, of ODNI, IARPA, or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for governmental purposes notwithstanding any copyright annotation therein.
+
+The v2.0 API refactoring was developed in pair-programming collaboration with Antigravity (AI coding assistant by Google DeepMind). Every line of code was reviewed by a human.

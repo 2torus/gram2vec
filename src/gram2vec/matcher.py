@@ -11,7 +11,21 @@ from spacy.tokens import Doc, Span
 
 @dataclass
 class Match:
-    """Represents a regex match on a linearized sentence."""
+    """Represents a regex match on a linearized sentence.
+
+    Attributes:
+        pattern_name: Identifier of the matched syntactic pattern.
+        matched: Substring from the linearized dependency tree that matched.
+        sentence: Raw text of the sentence that contained the match.
+
+    Examples:
+        >>> match = Match('passive', '(was-be-VBD-auxpass)', 'The apple was eaten.')
+        >>> match.pattern_name
+        'passive'
+        >>> repr(match)
+        'passive : The apple was eaten.'
+
+    """
 
     pattern_name: str
     matched: str
@@ -49,13 +63,36 @@ DEFAULT_RUSSIAN_PATTERNS: Dict[str, str] = {
 
 
 class SyntaxRegexMatcher:
-    """Encapsulates sentence regex patterns and methods to apply them to target documents."""
+    r"""Encapsulates sentence regex patterns and methods to apply them to target documents.
+
+    Supports syntactic pattern matching across linearized dependency parse trees
+    for English ('en') and Russian ('ru').
+
+    Examples:
+        >>> matcher = SyntaxRegexMatcher(language='en')
+        >>> 'passive' in matcher.patterns
+        True
+        >>> matcher.add_patterns({'custom_rule': r'\(.*\)'})
+        >>> 'custom_rule' in matcher.patterns
+        True
+        >>> matcher.remove_patterns(['custom_rule'])
+        >>> 'custom_rule' in matcher.patterns
+        False
+
+    """
 
     def __init__(
         self,
         language: str = 'en',
         patterns: Optional[Dict[str, str]] = None,
     ):
+        """Initialize a SyntaxRegexMatcher instance.
+
+        Args:
+            language: Language code ('en' or 'ru') to load default syntactic patterns.
+            patterns: Optional custom dictionary mapping pattern names to regular expression strings.
+
+        """
         self.language = language
 
         if patterns is not None:
@@ -68,12 +105,20 @@ class SyntaxRegexMatcher:
             self.patterns = {}
 
     def print_patterns(self) -> None:
-        """Prints all registered patterns."""
+        """Print all registered patterns and their regular expressions to stdout."""
         for pattern_name, pattern in self.patterns.items():
             print(f'{pattern_name} : {pattern}\n')
 
     def _find_treegex_matches(self, doc: Doc) -> Tuple[Match, ...]:
-        """Iterates through a document's sentences, applying every regex to each sentence."""
+        """Iterate through a document's sentences, applying every regex to each sentence.
+
+        Args:
+            doc: spaCy Doc to search for pattern matches.
+
+        Returns:
+            A tuple of Match objects found in the document.
+
+        """
         matches: List[Match] = []
         for sent in doc.sents:
             tree_string = self.linearize_tree(sent)
@@ -84,26 +129,75 @@ class SyntaxRegexMatcher:
         return tuple(matches)
 
     def add_patterns(self, patterns: Dict[str, str]) -> None:
-        """Updates patterns with a user supplied dictionary of {pattern_name: regex} pairs."""
+        r"""Update patterns with a user supplied dictionary of {pattern_name: regex} pairs.
+
+        Args:
+            patterns: Dictionary mapping pattern names to regular expression strings.
+
+        Examples:
+            >>> matcher = SyntaxRegexMatcher()
+            >>> matcher.add_patterns({'test_pat': r'\(.*-ROOT.*\)'})
+            >>> 'test_pat' in matcher.patterns
+            True
+
+        """
         self.patterns.update(patterns)
 
     def remove_patterns(self, to_remove: Iterable[str]) -> None:
-        """Removes the given pattern names from registered patterns."""
+        """Remove the given pattern names from registered patterns.
+
+        Args:
+            to_remove: Iterable of pattern names to remove.
+
+        Raises:
+            KeyError: If a pattern name is not found in registered patterns.
+
+        Examples:
+            >>> matcher = SyntaxRegexMatcher()
+            >>> matcher.remove_patterns(['tag-question'])
+            >>> 'tag-question' in matcher.patterns
+            False
+
+        """
         for pattern_name in to_remove:
             if pattern_name not in self.patterns:
                 raise KeyError(f"Pattern '{pattern_name}' not in registered patterns.")
             del self.patterns[pattern_name]
 
     def match_document(self, document: Doc) -> Tuple[Match, ...]:
-        """Applies all registered patterns to a single spaCy document."""
+        """Apply all registered patterns to a single spaCy document.
+
+        Args:
+            document: Processed spaCy Doc to analyze.
+
+        Returns:
+            Tuple of Match instances found across all sentences.
+
+        """
         return self._find_treegex_matches(document)
 
     def match_documents(self, documents: Iterable[Doc]) -> List[Tuple[Match, ...]]:
-        """Applies all registered patterns to a collection of spaCy documents."""
+        """Apply all registered patterns to a collection of spaCy documents.
+
+        Args:
+            documents: Iterable of spaCy Doc objects.
+
+        Returns:
+            List of tuples of Match instances, one tuple per document.
+
+        """
         return [self._find_treegex_matches(doc) for doc in documents]
 
     def linearize_tree(self, sentence: Span) -> str:
-        """Converts a spaCy dependency-parsed sentence into a linear tree string while preserving relations."""
+        """Convert a spaCy dependency-parsed sentence into a linear tree string while preserving relations.
+
+        Args:
+            sentence: A spaCy Span representing a sentence.
+
+        Returns:
+            Linearized tree string representation.
+
+        """
 
         def get_nt_count(sent: Span) -> int:
             return sum(1 for token in sent if list(token.children))

@@ -39,6 +39,13 @@ class Gram2VecDocument:
     """Encapsulates raw text and processed spaCy Doc object.
 
     Preserves raw text for emoji extraction and original statistics.
+
+    Attributes:
+        raw: Original raw text string.
+        doc: Processed spaCy Doc instance.
+        num_tokens: Total token count.
+        num_sentences: Total sentence count.
+
     """
 
     raw: str
@@ -48,13 +55,37 @@ class Gram2VecDocument:
 
 
 def _remove_emojis(document: str) -> str:
-    """Removes emojis from a string and normalizes extra whitespace."""
+    """Remove emojis from a string and normalize extra whitespace.
+
+    Args:
+        document: Input text string potentially containing emojis.
+
+    Returns:
+        Cleaned text string without emojis and with collapsed whitespace.
+
+    Examples:
+        >>> from gram2vec.vectorizer import _remove_emojis
+        >>> _remove_emojis("Hello 🙂 world! 🚀")
+        'Hello world!'
+
+    """
     new_string = demoji.replace(document, '').split()
     return ' '.join(new_string)
 
 
 def _load_jsonlines(path: Union[str, Path]) -> pd.DataFrame:
-    """Loads one or more .jsonl files into a single dataframe."""
+    """Load one or more .jsonl files into a single dataframe.
+
+    Args:
+        path: Path to a .jsonl file or directory containing .jsonl files.
+
+    Returns:
+        Combined pandas DataFrame with rows from all loaded files.
+
+    Raises:
+        FileNotFoundError: If the path does not exist or directory has no .jsonl files.
+
+    """
     p = Path(path)
     if p.is_file() or str(path).endswith('.jsonl'):
         return pd.read_json(str(p), lines=True)
@@ -67,7 +98,18 @@ def _load_jsonlines(path: Union[str, Path]) -> pd.DataFrame:
 
 
 def _get_json_entries(df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
-    """Retrieves fullText, authorIDs, and documentID fields from a jsonlines dataframe."""
+    """Retrieve fullText, authorIDs, and documentID fields from a jsonlines dataframe.
+
+    Args:
+        df: Input DataFrame containing JSON lines entries.
+
+    Returns:
+        Tuple of (documents, author_ids, document_ids) Series.
+
+    Raises:
+        KeyError: If any of the required columns are missing from the dataframe.
+
+    """
     try:
         documents = df['fullText']
         author_ids = df['authorIDs']
@@ -162,19 +204,38 @@ class Gram2Vec:
 
     @property
     def feature_locator(self) -> FeatureLocator:
-        """Returns a FeatureLocator configured with this instance's model and vocabs."""
+        """Return a FeatureLocator configured with this instance's model and vocabs."""
         if self._feature_locator is None:
             self._feature_locator = FeatureLocator(self.nlp, self.vocab, self.matcher)
         return self._feature_locator
 
     def find_feature_spans(self, text: str, feature_name: str) -> List[FeatureSpan]:
-        """Locates spans in text where the specified feature occurs."""
+        """Locate spans in text where the specified feature occurs.
+
+        Args:
+            text: Raw input text string.
+            feature_name: Feature identifier in 'feature_type:feature_value' format
+                (e.g., 'pos_unigrams:NOUN', 'punctuation:!').
+
+        Returns:
+            List of FeatureSpan instances representing each occurrence.
+
+        """
         return self.feature_locator.locate_feature(text, feature_name)
 
     def create_verbalizer(
         self, docs_df: pd.DataFrame, zscore_threshold: float = 2.0
     ) -> Verbalizer:
-        """Creates a Verbalizer instance calibrated to this model's language."""
+        """Create a Verbalizer instance calibrated to this model's language.
+
+        Args:
+            docs_df: DataFrame of document feature vectors.
+            zscore_threshold: Absolute z-score threshold for identifying salient features.
+
+        Returns:
+            Calibrated Verbalizer instance.
+
+        """
         return Verbalizer(
             docs_df, zscore_threshold=zscore_threshold, language=self.language
         )
@@ -182,34 +243,43 @@ class Gram2Vec:
     # ~~~ Feature Extractors ~~~
 
     def _extract_pos_unigrams(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of coarse part-of-speech tags."""
         return Counter(extract_pos_tags(doc.doc))
 
     def _extract_pos_bigrams(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of POS bigrams with sentence boundaries."""
         return Counter(extract_pos_bigrams(doc.doc))
 
     def _extract_func_words(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of function words matching configured vocabulary."""
         func_words_vocab = set(self.vocab.get('func_words'))
         return Counter([t.text for t in doc.doc if t.text in func_words_vocab])
 
     def _extract_punctuation(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of punctuation characters matching configured vocabulary."""
         punc_vocab = set(self.vocab.get('punctuation'))
         return Counter([c for t in doc.doc for c in t.text if c in punc_vocab])
 
     def _extract_letters(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of individual alphabet letters matching configured vocabulary."""
         letters_vocab = set(self.vocab.get('letters'))
         return Counter([c for t in doc.doc for c in t.text if c in letters_vocab])
 
     def _extract_dep_labels(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of syntactic dependency relation labels."""
         return Counter(extract_dep_labels(doc.doc))
 
     def _extract_morph_tags(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of morphological tags."""
         return Counter(extract_morph_tags(doc.doc))
 
     def _extract_sentences(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of syntactic sentence patterns matched by the regex matcher."""
         matches = self.matcher.match_document(doc.doc)
         return Counter([m.pattern_name for m in matches])
 
     def _extract_emojis(self, doc: Gram2VecDocument) -> Counter:
+        """Extract counts of emojis from raw text, grouping uncataloged ones into OOV_emoji."""
         emojis_vocab = set(self.vocab.get('emojis'))
         extracted_emojis = demoji.findall_list(doc.raw, desc=False)
         counted: Counter = Counter()
@@ -221,9 +291,11 @@ class Gram2Vec:
         return counted
 
     def _extract_num_tokens(self, doc: Gram2VecDocument) -> Counter:
+        """Extract the total token count of the document."""
         return Counter({'num_tokens': doc.num_tokens})
 
     def _get_extractor_map(self) -> Dict[str, Callable[[Gram2VecDocument], Counter]]:
+        """Return a mapping from feature names to their extraction methods."""
         return {
             'pos_unigrams': self._extract_pos_unigrams,
             'pos_bigrams': self._extract_pos_bigrams,
@@ -242,14 +314,33 @@ class Gram2Vec:
     def _include_zero_vocab_counts(
         self, counted: Counter, vocab_items: Iterable[str]
     ) -> pd.Series:
-        """Ensures all vocabulary items are present in order, filling unobserved with 0."""
+        """Ensure all vocabulary items are present in order, filling unobserved with 0.
+
+        Args:
+            counted: Counter of observed feature frequencies.
+            vocab_items: Canonical list of vocabulary tokens.
+
+        Returns:
+            pd.Series indexed by vocabulary items.
+
+        """
         count_dict = {item: counted.get(item, 0) for item in vocab_items}
         return pd.Series(count_dict)
 
     def _normalize_feature_counts(
         self, feat_name: str, counts: pd.Series, num_tokens: int
     ) -> pd.Series:
-        """Normalizes counted feature series according to feature type."""
+        """Normalize counted feature series according to feature type.
+
+        Args:
+            feat_name: Identifier of feature type.
+            counts: Series of raw counts.
+            num_tokens: Total token count in document.
+
+        Returns:
+            Normalized pandas Series.
+
+        """
         if feat_name == 'num_tokens':
             return counts
 
@@ -264,7 +355,16 @@ class Gram2Vec:
     def _apply_features_to_doc(
         self, doc: Gram2VecDocument, include_content_embedding: bool
     ) -> pd.Series:
-        """Extracts and normalizes all active features for a single document."""
+        """Extract and normalize all active features for a single document.
+
+        Args:
+            doc: Gram2VecDocument instance to process.
+            include_content_embedding: Whether to append the spaCy dense document vector.
+
+        Returns:
+            pd.Series of concatenated normalized feature values.
+
+        """
         extractor_map = self._get_extractor_map()
         feature_series: List[pd.Series] = []
 
@@ -295,7 +395,15 @@ class Gram2Vec:
     def _process_raw_documents(
         self, documents: Iterable[str]
     ) -> List[Gram2VecDocument]:
-        """Converts raw string documents into Gram2VecDocument instances."""
+        """Convert raw string documents into Gram2VecDocument instances.
+
+        Args:
+            documents: Iterable of raw text strings.
+
+        Returns:
+            List of Gram2VecDocument instances containing processed spaCy Doc objects.
+
+        """
         doc_list = list(documents)
         cleaned_docs = [_remove_emojis(doc) for doc in doc_list]
 
@@ -324,7 +432,7 @@ class Gram2Vec:
         documents: Iterable[str],
         include_content_embedding: bool = False,
     ) -> pd.DataFrame:
-        """Creates a stylistic feature vector matrix from an iterable of strings.
+        """Create a stylistic feature vector matrix from an iterable of strings.
 
         Args:
             documents: Iterable of raw text strings.
@@ -348,7 +456,7 @@ class Gram2Vec:
         path: Union[str, Path],
         include_content_embedding: bool = False,
     ) -> pd.DataFrame:
-        """Creates a stylistic feature vector matrix from a .jsonl file or directory of .jsonl files.
+        """Create a stylistic feature vector matrix from a .jsonl file or directory of .jsonl files.
 
         Requires 'fullText', 'authorIDs', and 'documentID' fields.
 
@@ -382,12 +490,15 @@ class Gram2Vec:
         raw_texts: Optional[Iterable[str]] = None,
         include_content_embedding: bool = False,
     ) -> pd.DataFrame:
-        """Creates a stylistic feature vector matrix from pre-processed spaCy Doc objects.
+        """Create a stylistic feature vector matrix from pre-processed spaCy Doc objects.
 
         Args:
             docs: Iterable of spaCy Doc objects.
             raw_texts: Optional iterable of original raw strings (for emoji extraction).
             include_content_embedding: Whether to append the spaCy document embedding.
+
+        Returns:
+            pd.DataFrame where each row is a document and each column is a stylistic feature.
 
         """
         doc_list = list(docs)

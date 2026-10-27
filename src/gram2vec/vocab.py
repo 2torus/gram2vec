@@ -24,7 +24,19 @@ STANDARD_VOCAB_NAMES = (
 
 
 class Vocab:
-    """Encapsulates feature vocabularies without relying on global state or environment variables."""
+    """Encapsulates feature vocabularies without relying on global state or environment variables.
+
+    Examples:
+        >>> vocab = Vocab(language='en')
+        >>> vocab.has('pos_unigrams')
+        True
+        >>> 'NOUN' in vocab.get('pos_unigrams')
+        True
+        >>> vocab.add_items('custom', ['item1', 'item2'])
+        >>> vocab.get('custom')
+        ['item1', 'item2']
+
+    """
 
     def __init__(
         self,
@@ -33,6 +45,15 @@ class Vocab:
         load_defaults: bool = True,
         matcher: Optional[Any] = None,
     ):
+        """Initialize Vocab with language and optional vocabulary directory.
+
+        Args:
+            language: Target language code ('en', 'ru', etc.).
+            vocab_dir: Path to directory containing custom vocabulary text files.
+            load_defaults: Whether to automatically load default vocabularies for language.
+            matcher: Optional SyntaxRegexMatcher instance to populate sentence patterns.
+
+        """
         self.language = language
         self._vocabs: dict[str, List[str]] = {}
         self.vocab_dir = self._resolve_vocab_dir(vocab_dir)
@@ -41,7 +62,18 @@ class Vocab:
             self.load_default_vocabs(matcher=matcher)
 
     def _resolve_vocab_dir(self, vocab_dir: Optional[Union[str, Path]]) -> Path:
-        """Resolves the directory containing vocabulary files."""
+        """Resolve the directory containing vocabulary files.
+
+        Args:
+            vocab_dir: Explicit directory path, or None to use package default.
+
+        Returns:
+            Resolved Path to vocabulary directory.
+
+        Raises:
+            NotADirectoryError: If the provided directory path does not exist or is not a directory.
+
+        """
         if vocab_dir is not None:
             path = Path(vocab_dir)
             if not path.is_dir():
@@ -58,12 +90,36 @@ class Vocab:
             return Path(__file__).resolve().parent / 'vocab'
 
     def _load_from_txt(self, path: Union[str, Path]) -> List[str]:
-        """Loads a .txt file delimited by newlines."""
+        """Load a .txt file delimited by newlines.
+
+        Args:
+            path: Path to text file.
+
+        Returns:
+            List of stripped line strings.
+
+        """
         with open(path, 'r', encoding='utf-8') as fin:
             return [line.rstrip('\r\n') for line in fin]
 
     def get(self, vocab_name: str) -> List[str]:
-        """Fetches the desired vocabulary items."""
+        """Fetch the desired vocabulary items.
+
+        Args:
+            vocab_name: Name of the vocabulary set (e.g. 'pos_unigrams').
+
+        Returns:
+            List of vocabulary items.
+
+        Raises:
+            KeyError: If vocab_name is not registered.
+
+        Examples:
+            >>> vocab = Vocab(language='en')
+            >>> len(vocab.get('punctuation')) > 0
+            True
+
+        """
         if vocab_name in self._vocabs:
             return self._vocabs[vocab_name]
         raise KeyError(
@@ -71,7 +127,22 @@ class Vocab:
         )
 
     def has(self, vocab_name: str) -> bool:
-        """Checks if a vocabulary name is registered."""
+        """Check if a vocabulary name is registered.
+
+        Args:
+            vocab_name: Name of the vocabulary set.
+
+        Returns:
+            True if registered, False otherwise.
+
+        Examples:
+            >>> vocab = Vocab(language='en')
+            >>> vocab.has('pos_unigrams')
+            True
+            >>> vocab.has('non_existent')
+            False
+
+        """
         return vocab_name in self._vocabs
 
     def add_from_path(
@@ -80,11 +151,20 @@ class Vocab:
         language: Optional[str] = None,
         file_path: Optional[Union[str, Path]] = None,
     ) -> None:
-        """Adds vocabulary from a newline delimited .txt file.
+        """Add vocabulary from a newline delimited .txt file.
 
         If file_path is explicitly given, loads that file directly.
         Otherwise, attempts to find '<language>_<vocab_name>.txt' or falls back to '<vocab_name>.txt'
         inside the configured vocab directory.
+
+        Args:
+            vocab_name: Identifier for the vocabulary set.
+            language: Optional language prefix override.
+            file_path: Optional explicit path to a vocabulary file.
+
+        Raises:
+            FileNotFoundError: If the vocabulary file does not exist.
+
         """
         if file_path is not None:
             path = Path(file_path)
@@ -112,11 +192,28 @@ class Vocab:
         self._vocabs[vocab_name] = self._load_from_txt(default_path)
 
     def add_items(self, vocab_name: str, items: Iterable[str]) -> None:
-        """Adds vocabulary items directly given a vocab name and iterable of strings."""
+        """Add vocabulary items directly given a vocab name and iterable of strings.
+
+        Args:
+            vocab_name: Identifier for the vocabulary set.
+            items: Iterable of string items to store.
+
+        Examples:
+            >>> vocab = Vocab(load_defaults=False)
+            >>> vocab.add_items('tags', ['NN', 'VB'])
+            >>> vocab.get('tags')
+            ['NN', 'VB']
+
+        """
         self._vocabs[vocab_name] = list(items)
 
     def load_default_vocabs(self, matcher: Optional[Any] = None) -> None:
-        """Loads all standard vocabularies for the configured language."""
+        """Load all standard vocabularies for the configured language.
+
+        Args:
+            matcher: Optional SyntaxRegexMatcher to register sentence pattern names.
+
+        """
         for name in STANDARD_VOCAB_NAMES:
             self.add_from_path(name, language=self.language)
 

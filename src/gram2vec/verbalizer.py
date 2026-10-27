@@ -39,6 +39,20 @@ class Verbalizer:
     """Encapsulates the z-score verbalization functionality of Gram2Vec.
 
     Computes salient stylometric features on document and author levels.
+
+    Examples:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({
+        ...     'authorIDs': ['a1', 'a1', 'a2', 'a2'],
+        ...     'pos_unigrams:NOUN': [0.10, 0.12, 0.35, 0.38],
+        ... }, index=['d1', 'd2', 'd3', 'd4'])
+        >>> v = Verbalizer(df, zscore_threshold=0.5)
+        >>> v.language
+        'en'
+        >>> auth_df = v.verbalize_author_id('a2')
+        >>> not auth_df.empty
+        True
+
     """
 
     def __init__(
@@ -48,6 +62,15 @@ class Verbalizer:
         language: str = 'en',
         custom_mapping: Optional[Dict[str, str]] = None,
     ):
+        """Initialize a Verbalizer instance.
+
+        Args:
+            docs_df: DataFrame containing document feature vectors and optional 'authorIDs'.
+            zscore_threshold: Absolute z-score threshold for identifying salient features.
+            language: Language code ('en' or 'ru') for verbal template messages.
+            custom_mapping: Optional dictionary mapping feature prefixes to readable descriptions.
+
+        """
         self.threshold = zscore_threshold
         self.language = language
         self.docs_df = docs_df
@@ -63,15 +86,40 @@ class Verbalizer:
             self.author_df = pd.DataFrame()
 
     def _exclude_columns(self, df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
-        """Excludes given columns from numerical operations."""
+        """Exclude given columns from numerical operations.
+
+        Args:
+            df: Input DataFrame.
+            cols: List of column names to exclude.
+
+        Returns:
+            DataFrame with specified columns excluded.
+
+        """
         return df.loc[:, ~df.columns.isin(cols)]
 
     def _get_author_docs(self, author_id: str) -> pd.DataFrame:
-        """Retrieves an author's documents from self.docs_df."""
+        """Retrieve an author's documents from self.docs_df.
+
+        Args:
+            author_id: Identifier of the author.
+
+        Returns:
+            Filtered DataFrame containing only the author's rows.
+
+        """
         return self.docs_df.loc[self.docs_df['authorIDs'] == author_id]
 
     def _make_author_df(self, docs_df: pd.DataFrame) -> pd.DataFrame:
-        """Averages document vectors by author."""
+        """Average document vectors by author.
+
+        Args:
+            docs_df: DataFrame containing 'authorIDs' and feature columns.
+
+        Returns:
+            DataFrame of averaged feature vectors indexed by author ID.
+
+        """
         author_ids = docs_df['authorIDs'].unique()
         author_ids_to_avs = {}
 
@@ -87,18 +135,46 @@ class Verbalizer:
     def _get_threshold_zscores_idxs(
         self, zscores: Union[np.ndarray, pd.Series, Any]
     ) -> np.ndarray:
-        """Gets column indices for zscores exceeding threshold."""
+        """Get column indices for zscores exceeding threshold.
+
+        Args:
+            zscores: 1D array or Series of z-score values.
+
+        Returns:
+            NumPy array of indices where absolute z-score >= threshold.
+
+        """
         arr = np.asarray(zscores)
         return np.where(np.abs(arr) >= self.threshold)[0]
 
     def _get_record_from_id(self, df: pd.DataFrame, id_val: str) -> int:
-        """Retrieves index of record in dataframe by index label."""
+        """Retrieve index of record in dataframe by index label.
+
+        Args:
+            df: DataFrame to search.
+            id_val: Index label value to locate.
+
+        Returns:
+            Integer row position.
+
+        Raises:
+            ValueError: If id_val is not found in dataframe index.
+
+        """
         if id_val in df.index:
             return df.index.to_list().index(id_val)
         raise ValueError(f"id '{id_val}' not found in dataframe index")
 
     def _get_zscores(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculates z-scores for numerical columns."""
+        """Calculate z-scores for numerical columns.
+
+        Args:
+            df: DataFrame containing numeric feature columns.
+
+        Returns:
+            DataFrame of standardized z-scores with matching columns and index.
+
+        """
         numeric_df = self._exclude_columns(df, cols=['authorIDs']).select_dtypes(
             include=np.number
         )
@@ -106,7 +182,16 @@ class Verbalizer:
         return pd.DataFrame(scores, index=numeric_df.index, columns=numeric_df.columns)
 
     def _get_identifying_features(self, author_id: str, df: pd.DataFrame) -> pd.Series:
-        """Calculates feature zscores for an author ID and keeps those exceeding threshold."""
+        """Calculate feature zscores for an author ID and keep those exceeding threshold.
+
+        Args:
+            author_id: Author ID to analyze.
+            df: DataFrame of author-level feature vectors.
+
+        Returns:
+            Series containing salient feature names and their z-scores.
+
+        """
         all_zscores = self._get_zscores(df)
         idx = self._get_record_from_id(df, author_id)
         extracted_zscores = all_zscores.iloc[idx]
@@ -114,7 +199,17 @@ class Verbalizer:
         return extracted_zscores.iloc[chosen_indices]
 
     def _template(self, doc_or_author: str, feat_name: str, direction: str) -> str:
-        """Generates a readable verbal explanation for a feature."""
+        """Generate a readable verbal explanation for a feature.
+
+        Args:
+            doc_or_author: Either 'document' or 'author'.
+            feat_name: Full feature name (e.g. 'pos_unigrams:NOUN').
+            direction: Direction of deviation ('more' or 'less').
+
+        Returns:
+            Formatted explanation string in configured language.
+
+        """
         parts = feat_name.split(':', 1)
         feat_type = parts[0]
         feat_val = parts[1] if len(parts) > 1 else feat_name
@@ -133,7 +228,16 @@ class Verbalizer:
         return f"This {doc_or_author} uses the {type_desc} '{feat_val}' {direction} than the average {doc_or_author}"
 
     def _verbalize_zscores(self, zscores: pd.Series, to_verbalize: str) -> List[str]:
-        """Creates a list of verbalized zscore sentences."""
+        """Create a list of verbalized zscore sentences.
+
+        Args:
+            zscores: Series mapping feature names to z-scores.
+            to_verbalize: Entity type ('document' or 'author').
+
+        Returns:
+            List of generated natural language sentences.
+
+        """
         converted = []
         for feat_name, score in zscores.items():
             direction = 'less' if score < 0 else 'more'
@@ -143,7 +247,15 @@ class Verbalizer:
     def verbalize_document_vector(
         self, document_vector: Union[np.ndarray, pd.Series]
     ) -> pd.DataFrame:
-        """Given a single document vector, retrieves that document's most distinguishing features."""
+        """Retrieve a document's most distinguishing features given a single vector.
+
+        Args:
+            document_vector: 1D array or Series representing document feature vector.
+
+        Returns:
+            pd.DataFrame with 'feature_name', 'zscore', and 'verbalized' columns.
+
+        """
         numeric_df = self.docs_df.select_dtypes(include=np.number)
         feature_names = numeric_df.columns.to_list()
 
@@ -170,12 +282,18 @@ class Verbalizer:
         )
 
     def verbalize_author_id(self, author_id: str) -> pd.DataFrame:
-        """Given an author ID, retrieves that author's most distinguishing features."""
-        if self.author_df.empty:
-            raise ValueError(
-                "author_df is empty. Input dataframe must contain 'authorIDs' column."
-            )
+        """Retrieve an author's most distinguishing features given an author ID.
 
+        Args:
+            author_id: Identifier of the author.
+
+        Returns:
+            pd.DataFrame with 'feature_name', 'zscore', and 'verbalized' columns.
+
+        Raises:
+            ValueError: If author_df is empty because 'authorIDs' was missing.
+
+        """
         selected_id_zscores = self._get_identifying_features(author_id, self.author_df)
         templated_strings = self._verbalize_zscores(selected_id_zscores, 'author')
 

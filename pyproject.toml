@@ -90,8 +90,11 @@ ignore = [
 "docs/*" = ["D"]
 "*.ipynb" = ["D", "F401", "I001"]
 
+[tool.poe.env]
+UV_NO_SYNC = "1"
+
 [tool.poe.tasks]
-check = { sequence = ["format-check", "lint", "typecheck", "test"], help = "Run all verification checks (format, lint, typing, test)" }
+check = { sequence = ["format-check", "lint", "typecheck", "doctest", "test"], help = "Run all verification checks (format, lint, typing, doctest, test)" }
 fix = { sequence = ["format", "lint-fix"], help = "Auto-format and auto-fix lint issues" }
 
 format = { cmd = "ruff format src test script", help = "Format code with ruff" }
@@ -99,6 +102,7 @@ format-check = { cmd = "ruff format --check src test script", help = "Check form
 lint = { cmd = "ruff check src test script", help = "Lint code with ruff" }
 lint-fix = { cmd = "ruff check --fix src test script", help = "Lint code and apply safe auto-fixes" }
 typecheck = { cmd = "mypy src", help = "Type check source code with mypy" }
+doctest = { cmd = "pytest --doctest-modules src", help = "Run doctests with pytest" }
 test = { cmd = "pytest", help = "Run tests with pytest" }
 build = { cmd = "uv build", help = "Build sdist and wheel into dist/" }
 

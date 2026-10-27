@@ -16,7 +16,25 @@ from .vocab import Vocab
 
 @dataclass
 class FeatureSpan:
-    """Represents a text span where a specific feature occurs."""
+    """Represents a text span where a specific feature occurs.
+
+    Attributes:
+        feature_type: Category of the stylistic feature (e.g. 'pos_unigrams').
+        feature_name: Name or value of the feature (e.g. 'NOUN').
+        text: Matched substring from the original text.
+        start_char: Zero-indexed character start offset.
+        end_char: Zero-indexed character end offset.
+
+    Examples:
+        >>> span = FeatureSpan('pos_unigrams', 'NOUN', 'dog', 4, 7)
+        >>> span.start_char
+        4
+        >>> span.end_char
+        7
+        >>> repr(span)
+        "pos_unigrams:NOUN at char [4:7]: 'dog'"
+
+    """
 
     feature_type: str
     feature_name: str
@@ -35,6 +53,14 @@ class FeatureLocator:
     """
 
     def __init__(self, nlp: Language, vocab: Vocab, matcher: SyntaxRegexMatcher):
+        """Initialize FeatureLocator with spaCy Language, Vocab, and matcher.
+
+        Args:
+            nlp: spaCy Language pipeline for text parsing.
+            vocab: Vocab instance containing allowed feature vocabularies.
+            matcher: SyntaxRegexMatcher for syntactic sentence patterns.
+
+        """
         self.nlp = nlp
         self.vocab = vocab
         self.matcher = matcher
@@ -64,6 +90,9 @@ class FeatureLocator:
         Returns:
             A list of FeatureSpan objects representing each occurrence.
 
+        Raises:
+            ValueError: If feature_name is not in 'type:value' format or feature type is unknown.
+
         """
         if ':' not in feature_name:
             raise ValueError(
@@ -84,6 +113,7 @@ class FeatureLocator:
     def _locate_pos_unigrams(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate occurrences of a part-of-speech unigram."""
         spans: List[FeatureSpan] = []
         for token in doc:
             if token.pos_ == feature_value:
@@ -101,6 +131,7 @@ class FeatureLocator:
     def _locate_pos_bigrams(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate occurrences of a part-of-speech bigram, including BOS/EOS boundaries."""
         spans: List[FeatureSpan] = []
         parts = feature_value.split(' ')
         if len(parts) != 2:
@@ -159,6 +190,7 @@ class FeatureLocator:
     def _locate_func_words(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate occurrences of a function word from the vocabulary."""
         spans: List[FeatureSpan] = []
         func_words_vocab = set(self.vocab.get('func_words'))
         target = feature_value.lower()
@@ -182,6 +214,7 @@ class FeatureLocator:
     def _locate_punctuation(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate occurrences of a punctuation character from the vocabulary."""
         spans: List[FeatureSpan] = []
         punc_vocab = set(self.vocab.get('punctuation'))
 
@@ -206,6 +239,7 @@ class FeatureLocator:
     def _locate_letters(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate occurrences of an individual letter from the vocabulary."""
         spans: List[FeatureSpan] = []
         letters_vocab = set(self.vocab.get('letters'))
 
@@ -230,6 +264,7 @@ class FeatureLocator:
     def _locate_dep_labels(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate occurrences of a dependency relation label."""
         spans: List[FeatureSpan] = []
         for token in doc:
             if token.dep_ == feature_value:
@@ -247,6 +282,7 @@ class FeatureLocator:
     def _locate_morph_tags(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate occurrences of a morphological tag."""
         spans: List[FeatureSpan] = []
         for token in doc:
             if feature_value in token.morph:
@@ -264,6 +300,7 @@ class FeatureLocator:
     def _locate_sentences(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate full sentence spans matching a syntactic regex pattern."""
         spans: List[FeatureSpan] = []
         for sent in doc.sents:
             matches = self.matcher.match_document(sent.as_doc())
@@ -283,6 +320,7 @@ class FeatureLocator:
     def _locate_emojis(
         self, doc: Doc, feature_value: str, raw_text: str
     ) -> List[FeatureSpan]:
+        """Locate emoji occurrences in the text."""
         spans: List[FeatureSpan] = []
         emojis_vocab = set(self.vocab.get('emojis'))
 

@@ -16,3 +16,13 @@ repos:
     hooks:
       - id: typos
         args: []
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run --no-sync mypy src
+        language: system
+        types: [python]
+        files: ^src/
+        pass_filenames: false

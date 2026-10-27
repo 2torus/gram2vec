@@ -78,27 +78,74 @@ def load_spacy_model(
 
 
 def extract_tokens(doc: Doc) -> List[str]:
-    """Returns token text for each token in the document."""
+    """Return token text for each token in the document.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of raw token text strings.
+
+    Examples:
+        >>> import spacy
+        >>> nlp = spacy.blank('en')
+        >>> doc = nlp('The quick brown fox.')
+        >>> extract_tokens(doc)
+        ['The', 'quick', 'brown', 'fox', '.']
+
+    """
     return [token.text for token in doc]
 
 
 def extract_pos_tags(doc: Doc) -> List[str]:
-    """Returns part-of-speech tags for each token in the document."""
+    """Return part-of-speech tags for each token in the document.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of coarse part-of-speech tag strings (e.g. 'NOUN', 'VERB').
+
+    """
     return [token.pos_ for token in doc]
 
 
 def extract_dep_labels(doc: Doc) -> List[str]:
-    """Returns dependency labels for each token in the document."""
+    """Return dependency labels for each token in the document.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of dependency relation label strings.
+
+    """
     return [token.dep_ for token in doc]
 
 
 def extract_morph_tags(doc: Doc) -> List[str]:
-    """Returns non-empty morphological tags for each token in the document."""
+    """Return non-empty morphological tags for each token in the document.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of morphological tag strings (e.g. 'Number=Sing').
+
+    """
     return [morph for token in doc for morph in token.morph if morph != '']
 
 
 def extract_pos_bigrams(doc: Doc) -> List[str]:
-    """Generates POS bigrams with sentence boundaries (BOS and EOS)."""
+    """Generate POS bigrams with sentence boundaries (BOS and EOS).
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of bigram strings with BOS/EOS boundary markers.
+
+    """
     spans: List[SentenceSpan] = [(sent.start, sent.end) for sent in doc.sents]
     pos_tags = [token.pos_ for token in doc]
 
@@ -133,15 +180,23 @@ _DEGREE_TO_KEY = {'Cmp': 'comparative', 'Sup': 'superlative'}
 
 
 def pronoun_category(token: Token) -> Optional[str]:
-    """Returns the pronoun category of a token, or None if it is not a personal pronoun.
+    """Return the pronoun category of a token, or None if it is not a personal pronoun.
 
     Uses the universal ``Person`` morphological feature, so it works for any language
     whose model predicts morphology. English 'it' is split out from third person,
     since it behaves very differently stylistically (Biber).
+
+    Args:
+        token: spaCy Token to classify.
+
+    Returns:
+        Category string ('first_person', 'second_person', 'third_person', or 'it'),
+        or None if token is not a personal pronoun.
+
     """
     if token.pos_ != 'PRON':
         return None
-    person = token.morph.get('Person')
+    person = token.morph.get('Person', [])
     if not person:
         return None
     if token.lang_ == 'en' and token.lower_ == 'it':
@@ -150,30 +205,71 @@ def pronoun_category(token: Token) -> Optional[str]:
 
 
 def degree_category(token: Token) -> Optional[str]:
-    """Returns 'comparative'/'superlative' from the universal ``Degree`` feature, else None."""
-    degree = token.morph.get('Degree')
+    """Return 'comparative'/'superlative' from the universal ``Degree`` feature, else None.
+
+    Args:
+        token: spaCy Token to classify.
+
+    Returns:
+        'comparative', 'superlative', or None.
+
+    """
+    degree = token.morph.get('Degree', [])
     if not degree:
         return None
     return _DEGREE_TO_KEY.get(degree[0])
 
 
 def extract_pronouns(doc: Doc) -> List[str]:
-    """Returns the pronoun category for each personal pronoun in the document."""
+    """Return the pronoun category for each personal pronoun in the document.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of pronoun category strings.
+
+    """
     return [c for c in (pronoun_category(t) for t in doc) if c is not None]
 
 
 def extract_degree(doc: Doc) -> List[str]:
-    """Returns the degree category for each comparative/superlative token."""
+    """Return the degree category for each comparative/superlative token.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of degree category strings ('comparative' or 'superlative').
+
+    """
     return [c for c in (degree_category(t) for t in doc) if c is not None]
 
 
 def extract_named_entity_labels(doc: Doc) -> List[str]:
-    """Returns entity labels (not entity text) for each named entity."""
+    """Return entity labels (not entity text) for each named entity.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        List of entity label strings (e.g. 'PERSON', 'ORG').
+
+    """
     return [ent.label_ for ent in doc.ents]
 
 
 def extract_avg_lengths(doc: Doc) -> Dict[str, float]:
-    """Computes average token, sentence and noun-chunk lengths."""
+    """Compute average token, sentence and noun-chunk lengths.
+
+    Args:
+        doc: Processed spaCy Doc.
+
+    Returns:
+        Dictionary mapping length metric names ('chars_per_token',
+        'tokens_per_sentence', 'tokens_per_noun_chunk') to float values.
+
+    """
     num_tokens = len(doc)
     num_sents = len(list(doc.sents)) if num_tokens else 0
     try:

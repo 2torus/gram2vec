@@ -1,0 +1,117 @@
+site_name: Gram2Vec
+site_description: An Interpretable Document Vectorizer for Stylistic and Syntactic Analysis
+site_author: Eric Sclafani, Peter Zeng, et al.
+repo_name: eric-sclafani/gram2vec
+repo_url: https://github.com/eric-sclafani/gram2vec
+
+theme:
+  name: material
+  language: en
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+  - mkdocs-jupyter:
+      execute: false
+      include_source: true
+      ignore_h1_titles: true
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_source: true
+            merge_init_into_class: true
+            separate_signature: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+  - with-pdf:
+      enabled_if_env: ENABLE_PDF_EXPORT
+      output_path: pdf/gram2vec_manual.pdf
+      cover_title: Gram2Vec Documentation
+      cover_subtitle: An Interpretable Document Vectorizer for Stylistic Features
+      author: Peter Zeng, Hannah Stortz, Eric Sclafani, et al.
+      toc_title: Table of Contents
+      heading_shift: false
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.mark
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Guides:
+      - Multilingual Support: guides/multilingual.md
+      - Custom Feature Configuration: guides/custom_features.md
+      - Downstream Classification: guides/downstream_classification.md
+  - Interactive Notebooks:
+      - Quickstart Vectorization: notebooks/test_gram2vec.ipynb
+      - Linearization Experiments: notebooks/linearization_experiments.ipynb
+      - Visualize Linearization: notebooks/visualize_linearization.ipynb
+  - Example Scripts:
+      - Basic Usage Script: examples/basic_usage.md
+  - Reference:
+      - API Reference: reference/api.md
+      - Stylistic Feature Catalog: reference/features.md
+  - Background & Theory: background/theory.md

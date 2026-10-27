@@ -1,7 +1,7 @@
 # Gram2Vec
 
 ## Description
-`Gram2Vec` is a grammatical style embedding algorithm that embeds documents into a higher dimensional space by extracting the normalized relative frequencies of stylistic features present in the text. To learn more, please refer to https://arxiv.org/pdf/2406.12131.
+`Gram2Vec` is a grammatical style embedding algorithm that embeds documents into a higher dimensional space by extracting the normalized relative frequencies of stylistic features present in the text. To learn more, see our paper: [**Gram2Vec: An Interpretable Document Vectorizer**](https://arxiv.org/abs/2406.12131) (arXiv:2406.12131).
 
 More specifically, Gram2vec vectorizes based off features pertaining to grammar, such as POS tags, punctuation, syntactic constructions, and much more.
 
@@ -196,6 +196,23 @@ Add your feature as a field to `FeatureConfig` in [config.py](src/gram2vec/confi
 ### Step 5
 
 Finally, if you want to also use the `Verbalizer` with your new features, you should add it to `NAME_MAPPING_EN` (and `NAME_MAPPING_RU`) in [verbalizer.py](src/gram2vec/verbalizer.py) to provide a descriptive string representation. 
+
+
+## Citation
+
+If you use `Gram2Vec` in your research, please cite the paper:
+
+```bibtex
+@misc{zeng2024gram2vecinterpretabledocumentvectorizer,
+      title={Gram2Vec: An Interpretable Document Vectorizer}, 
+      author={Peter Zeng and Hannah Stortz and Eric Sclafani and Alina Shabaeva and Maria Elizabeth Garza and Daniel Greeson and Owen Rambow},
+      year={2024},
+      eprint={2406.12131},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2406.12131}, 
+}
+```
 
 
 ## Acknowledgements & Credits

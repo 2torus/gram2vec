@@ -1,0 +1,43 @@
+/* Gram2Vec Documentation Styles */
+
+:root {
+  --md-primary-fg-color:        #3f51b5;
+  --md-primary-fg-color--light: #7986cb;
+  --md-primary-fg-color--dark:  #303f9f;
+  --md-accent-fg-color:         #ff4081;
+}
+
+/* Feature tables */
+.md-typeset table:not([class]) {
+  font-size: .85rem;
+  border-collapse: collapse;
+  width: 100%;
+  display: table;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--md-default-fg-color--lightest);
+  font-weight: 600;
+}
+
+/* Print / PDF-specific enhancements */
+@media print {
+  body {
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  table, pre, .highlight, .admonition {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .md-nav, .md-header, .md-footer, .md-sidebar {
+    display: none !important;
+  }
+}

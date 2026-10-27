@@ -27,8 +27,8 @@ classifiers = [
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
-[tool.hatch.build]
-include = ["*.txt"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/gram2vec"]
 
 [tool.hatch.version]
 source = "vcs"
@@ -48,6 +48,13 @@ dev = [
 test = [
     "pytest>=8.3.5",
     "pytest-xdist>=3.8.0",
+]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.28.0",
+    "mkdocs-jupyter>=0.25.0",
+    "mkdocs-with-pdf>=0.9.3",
 ]
 
 [tool.pytest.ini_options]
@@ -111,7 +118,11 @@ model-en = { shell = "python -c 'import en_core_web_lg' 2>/dev/null || python -m
 model-ru = { shell = "python -c 'import ru_core_news_lg' 2>/dev/null || python -m spacy download ru_core_news_lg", help = "Download spaCy Russian model (ru_core_news_lg)" }
 model-zh = { shell = "python -c 'import zh_core_web_sm' 2>/dev/null || python -m spacy download zh_core_web_sm", help = "Download spaCy Chinese model (zh_core_web_sm)" }
 
-clean = { cmd = "python -c \"import shutil, glob; [shutil.rmtree(p, ignore_errors=True) for p in glob.glob('.*cache') + glob.glob('dist') + glob.glob('src/*.egg-info')]\"", help = "Remove cache and build artifacts" }
+clean = { cmd = "python -c \"import shutil, glob; [shutil.rmtree(p, ignore_errors=True) for p in glob.glob('.*cache') + glob.glob('dist') + glob.glob('site') + glob.glob('src/*.egg-info')]\"", help = "Remove cache and build artifacts" }
+
+docs-serve = { cmd = "mkdocs serve", help = "Serve documentation locally at http://127.0.0.1:8000" }
+docs-build = { cmd = "mkdocs build", help = "Build static HTML documentation into site/" }
+docs-pdf = { shell = "ENABLE_PDF_EXPORT=1 mkdocs build", help = "Build HTML documentation and export unified PDF manual" }
 
 
 [tool.poe.tasks.run-example]

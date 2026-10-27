@@ -16,11 +16,11 @@ jobs:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # hatch-vcs needs tags/history for versioning
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -43,11 +43,11 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
 
       - name: Install
         run: uv sync --group dev
@@ -55,10 +55,37 @@ jobs:
       - name: Build sdist and wheel
         run: uv run --no-sync poe build
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
+
+      - name: Install distribution and run smoke test
+        run: |
+          uv venv --seed test_env
+          source test_env/bin/activate
+          pip install dist/*.whl
+          cd $(mktemp -d)
+          python -c "
+          import gram2vec
+          from gram2vec import FeatureConfig, Gram2Vec, Vocab
+          import spacy
+
+          print('Installed gram2vec version:', gram2vec.__version__)
+
+          vocab = Vocab(language='en')
+          print('English pos_unigrams count:', len(vocab.get('pos_unigrams')))
+
+          nlp = spacy.blank('en')
+          nlp.add_pipe('sentencizer')
+          cfg = FeatureConfig.only('func_words', 'num_tokens')
+          g2v = Gram2Vec(model=nlp, config=cfg)
+          df = g2v.from_documents(['The quick brown fox jumps over the lazy dog.'])
+          print('Extracted features shape:', df.shape)
+          assert df.shape[0] == 1
+          assert len(df.columns) > 0
+          print('All verification commands passed successfully!')
+          "
 
   release:
     name: Publish GitHub Release
@@ -68,7 +95,7 @@ jobs:
     permissions:
       contents: write # required to create releases
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/

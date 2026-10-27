@@ -100,24 +100,21 @@ lint = { cmd = "ruff check src test script", help = "Lint code with ruff" }
 lint-fix = { cmd = "ruff check --fix src test script", help = "Lint code and apply safe auto-fixes" }
 typecheck = { cmd = "mypy src", help = "Type check source code with mypy" }
 test = { cmd = "pytest", help = "Run tests with pytest" }
+build = { cmd = "uv build", help = "Build sdist and wheel into dist/" }
 
-models = { sequence = ["model-en", "model-ru"], help = "Download spaCy language models" }
-model-en = { cmd = "python -m spacy download en_core_web_lg", help = "Download spaCy English model (en_core_web_lg)" }
-model-ru = { cmd = "python -m spacy download ru_core_news_lg", help = "Download spaCy Russian model (ru_core_news_lg)" }
+models = { sequence = ["model-en", "model-ru", "model-zh"], help = "Download spaCy language models" }
+model-en = { shell = "python -c 'import en_core_web_lg' 2>/dev/null || python -m spacy download en_core_web_lg", help = "Download spaCy English model (en_core_web_lg)" }
+model-ru = { shell = "python -c 'import ru_core_news_lg' 2>/dev/null || python -m spacy download ru_core_news_lg", help = "Download spaCy Russian model (ru_core_news_lg)" }
+model-zh = { shell = "python -c 'import zh_core_web_sm' 2>/dev/null || python -m spacy download zh_core_web_sm", help = "Download spaCy Chinese model (zh_core_web_sm)" }
 
 clean = { cmd = "python -c \"import shutil, glob; [shutil.rmtree(p, ignore_errors=True) for p in glob.glob('.*cache') + glob.glob('dist') + glob.glob('src/*.egg-info')]\"", help = "Remove cache and build artifacts" }
 
 
 [tool.poe.tasks.run-example]
 help = "Run all commands in script/"
-shell = "for f in $(find script -name '*.py'); do echo \" Running script \"$f; python \"$f\"; done"
+shell = "set -e; for f in $(find script -name '*.py'); do echo \" Running script \"$f; python \"$f\"; done"
 
 [tool.poe.tasks.run-notebooks]
-help = "Run notebooks"
-shell = """
-    cd docs/notebooks
-    for notebook in *.ipynb; do
-        echo "Executing $notebook"
-        jupyter-execute "$notebook"
-    done
-"""
+help = "Run all Jupyter notebooks in docs/notebooks"
+deps = ["models"]
+cmd = "jupyter-execute docs/notebooks/*.ipynb"

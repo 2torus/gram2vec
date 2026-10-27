@@ -113,3 +113,11 @@ def test_verbalizer():
     assert 'zscore' in result.columns
     assert 'verbalized' in result.columns
     assert len(result) > 0
+
+
+def test_version():
+    import gram2vec
+
+    assert hasattr(gram2vec, '__version__')
+    assert isinstance(gram2vec.__version__, str)
+    assert gram2vec.__version__ != ''

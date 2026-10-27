@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from sys import stderr
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import spacy
 from spacy.language import Language
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Token
 
 SentenceSpan = Tuple[int, int]
 Bigram = Tuple[str, str]
@@ -116,3 +116,77 @@ def extract_pos_bigrams(doc: Doc) -> List[str]:
         (new_tokens[i], new_tokens[i + 1]) for i in range(len(new_tokens) - 1)
     ]
     return [f'{b[0]} {b[1]}' for b in bigrams_list]
+
+
+# ~~~ Biber-style categorical features (fixed, content-agnostic keys) ~~~
+
+PRONOUN_KEYS: Tuple[str, ...] = ('first_person', 'second_person', 'third_person', 'it')
+DEGREE_KEYS: Tuple[str, ...] = ('comparative', 'superlative')
+AVG_LENGTH_KEYS: Tuple[str, ...] = (
+    'chars_per_token',
+    'tokens_per_sentence',
+    'tokens_per_noun_chunk',
+)
+
+_PERSON_TO_KEY = {'1': 'first_person', '2': 'second_person', '3': 'third_person'}
+_DEGREE_TO_KEY = {'Cmp': 'comparative', 'Sup': 'superlative'}
+
+
+def pronoun_category(token: Token) -> Optional[str]:
+    """Returns the pronoun category of a token, or None if it is not a personal pronoun.
+
+    Uses the universal ``Person`` morphological feature, so it works for any language
+    whose model predicts morphology. English 'it' is split out from third person,
+    since it behaves very differently stylistically (Biber).
+    """
+    if token.pos_ != 'PRON':
+        return None
+    person = token.morph.get('Person')
+    if not person:
+        return None
+    if token.lang_ == 'en' and token.lower_ == 'it':
+        return 'it'
+    return _PERSON_TO_KEY.get(person[0])
+
+
+def degree_category(token: Token) -> Optional[str]:
+    """Returns 'comparative'/'superlative' from the universal ``Degree`` feature, else None."""
+    degree = token.morph.get('Degree')
+    if not degree:
+        return None
+    return _DEGREE_TO_KEY.get(degree[0])
+
+
+def extract_pronouns(doc: Doc) -> List[str]:
+    """Returns the pronoun category for each personal pronoun in the document."""
+    return [c for c in (pronoun_category(t) for t in doc) if c is not None]
+
+
+def extract_degree(doc: Doc) -> List[str]:
+    """Returns the degree category for each comparative/superlative token."""
+    return [c for c in (degree_category(t) for t in doc) if c is not None]
+
+
+def extract_named_entity_labels(doc: Doc) -> List[str]:
+    """Returns entity labels (not entity text) for each named entity."""
+    return [ent.label_ for ent in doc.ents]
+
+
+def extract_avg_lengths(doc: Doc) -> Dict[str, float]:
+    """Computes average token, sentence and noun-chunk lengths."""
+    num_tokens = len(doc)
+    num_sents = len(list(doc.sents)) if num_tokens else 0
+    try:
+        chunks = list(doc.noun_chunks)
+    except (NotImplementedError, ValueError):
+        # Language has no noun-chunk iterator, or the doc is not parsed
+        chunks = []
+    return {
+        'chars_per_token': (
+            sum(len(t.text) for t in doc) / num_tokens if num_tokens else 0.0
+        ),
+        'tokens_per_sentence': num_tokens / num_sents if num_sents else 0.0,
+        'tokens_per_noun_chunk': (
+            sum(len(c) for c in chunks) / len(chunks) if chunks else 0.0
+        ),
+    }

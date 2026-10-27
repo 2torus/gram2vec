@@ -20,6 +20,11 @@ class FeatureConfig:
     morph_tags: bool = True
     sentences: bool = True
     num_tokens: bool = True
+    pronouns: bool = True
+    degree: bool = True
+    avg_lengths: bool = True
+    # Requires the spaCy 'ner' component, which is excluded by default
+    named_entities: bool = False
 
     @classmethod
     def default(cls) -> FeatureConfig:
@@ -28,8 +33,8 @@ class FeatureConfig:
 
     @classmethod
     def all(cls) -> FeatureConfig:
-        """Enables all available features, including letters."""
-        return cls(letters=True)
+        """Enables all available features, including letters and named entities."""
+        return cls(letters=True, named_entities=True)
 
     @classmethod
     def only(cls, *features: str) -> FeatureConfig:

@@ -62,11 +62,10 @@ jobs:
 
       - name: Install distribution and run smoke test
         run: |
-          uv venv --seed test_env
-          source test_env/bin/activate
-          pip install dist/*.whl
+          uv venv test_env
+          uv pip install --python test_env dist/*.whl
           cd $(mktemp -d)
-          python -c "
+          "$GITHUB_WORKSPACE/test_env/bin/python" -c "
           import gram2vec
           from gram2vec import FeatureConfig, Gram2Vec, Vocab
           import spacy

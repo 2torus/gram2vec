@@ -32,7 +32,7 @@ jobs:
           uv pip install pip  # spacy download shells out to pip
           uv run --no-sync poe models
 
-      - name: Check (format, lint, typecheck, test)
+      - name: Check (format, lint, typecheck, doctest, test)
         run: uv run --no-sync poe check
 
       - name: Run scripts

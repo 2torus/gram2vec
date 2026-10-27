@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0 # hatch-vcs needs tags/history for versioning
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
 
@@ -47,7 +47,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2
 
       - name: Install
         run: uv sync --group dev
